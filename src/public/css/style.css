@@ -1,0 +1,273 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: 'Arial', sans-serif;
+  background-color: #f9f9f9;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 15px;
+  background-color: #f0f0f0;
+  overflow-y: auto;
+}
+
+.panel-left, .panel-right {
+  width: 16%;
+  min-width: 200px;
+  border-right: 2px solid #ccc;
+}
+
+.panel-right {
+  border-right: none;
+  border-left: 2px solid #ccc;
+}
+
+.panel-center {
+  flex: 1;
+  background-color: #ffffff;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 5px;
+}
+
+#pizarra {
+  width: 94.32%;
+  height: 85%;
+  background-color: #ffffff;
+  border: 3px solid #7FFF00;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px;
+  width: 100%;
+  font-size: 16px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #45A049;
+}
+
+.component-wrapper {
+  position: absolute;
+  border: 1px dashed #999;
+  background: rgba(255, 255, 255, 0.85);
+  overflow: visible;
+  transition: border 0.2s, transform 0.2s;
+}
+
+.div-component {
+  background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #003366;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.button-component {
+  background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 6px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.text-component {
+  background-color: transparent;
+  color: #333;
+  font-size: 18px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.image-component {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.input-component {
+  width: 100%;
+  height: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.card-component {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  color: #555;
+  padding: 10px;
+}
+
+.div-selected {
+  outline: 2px dashed #ff4500;
+}
+
+.regla-horizontal, .regla-vertical {
+  position: absolute;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to right,
+    transparent,
+    transparent 9px,
+    #ccc 10px
+  );
+}
+
+.regla-horizontal {
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20px;
+}
+
+.regla-vertical {
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 100%;
+}
+
+.regla-horizontal div,
+.regla-vertical div {
+  position: absolute;
+  font-size: 10px;
+  color: #333;
+}
+
+/* Padre-Hijo visual */
+.padre-component {
+  border: 2px solid #007BFF;
+}
+
+.hijo-component {
+  border: 2px dashed #00BFFF;
+}
+
+/* Animaciones al crear componentes */
+@keyframes popIn {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.div-component,
+.button-component,
+.text-component,
+.image-component,
+.input-component,
+.card-component {
+  animation: popIn 0.3s ease-out;
+}
+
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.input-group div {
+  flex: 1;
+}
+
+.input-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #555;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: #f9f9f9;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+#barra-ventanas {
+  width: 100%;
+  padding: 8px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  background-color: #f1f1f1;
+  border-top: 2px solid #ccc;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+#listaVentanas {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+#listaVentanas button {
+  min-width: 40%;
+  height: 60%;
+  background-color: #2196F3;
+  color: white;
+  font-weight: bold;
+  font-size: 13px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 5px;
+  transition: background-color 0.3s;
+}
+
+#listaVentanas button:hover {
+  background-color: #1976D2;
+}

@@ -1,0 +1,17 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    text-align: center;
+}
+
+#diagramDiv {
+    margin: 20px auto;
+}
+
+canvas {
+    border: 1px solid black;
+}

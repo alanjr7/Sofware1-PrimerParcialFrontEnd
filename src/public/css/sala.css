@@ -1,0 +1,26 @@
+/* ==========================================================================
+   Modular Table & Room Enhancements (sala.css)
+   ========================================================================== */
+
+#rooms-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+#rooms-table th {
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+#rooms-table tr td {
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+}
+
+#rooms-table tbody tr:hover td {
+    background-color: rgba(37, 99, 235, 0.03);
+}
+
+.room-actions-cell {
+    white-space: nowrap;
+}

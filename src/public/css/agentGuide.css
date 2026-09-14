@@ -1,0 +1,397 @@
+/**
+ * agentGuide.css - Enterprise Design System para Guías Contextuales y Onboarding
+ * Estándar de Diseño: Linear / Stripe / Vercel / Apple Human Interface Guidelines
+ */
+
+:root {
+    --guide-bg-backdrop: rgba(10, 15, 29, 0.65);
+    --guide-surface: #0f172a;
+    --guide-surface-elevated: #1e293b;
+    --guide-surface-glass: rgba(15, 23, 42, 0.92);
+    --guide-border: rgba(255, 255, 255, 0.1);
+    --guide-border-subtle: rgba(255, 255, 255, 0.06);
+    --guide-border-focus: #3b82f6;
+    --guide-text-primary: #f8fafc;
+    --guide-text-secondary: #94a3b8;
+    --guide-text-tertiary: #64748b;
+    --guide-accent: #2563eb;
+    --guide-accent-hover: #1d4ed8;
+    --guide-accent-subtle: rgba(37, 99, 235, 0.12);
+    --guide-danger: #ef4444;
+    --guide-danger-subtle: rgba(239, 68, 68, 0.12);
+    --guide-radius-sm: 6px;
+    --guide-radius-md: 10px;
+    --guide-radius-lg: 14px;
+    --guide-shadow-popover: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    --guide-shadow-spotlight: 0 0 0 9999px rgba(10, 15, 29, 0.68), 0 0 0 2px #3b82f6, 0 8px 24px -4px rgba(37, 99, 235, 0.35);
+    --guide-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ==========================================================================
+   1. OVERLAY & SPOTLIGHT
+   ========================================================================== */
+
+#agent-overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    z-index: 999980;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#agent-overlay-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#agent-spotlight-box {
+    position: fixed;
+    z-index: 999985;
+    border-radius: var(--guide-radius-sm);
+    box-shadow: var(--guide-shadow-spotlight);
+    pointer-events: none;
+    opacity: 0;
+    transition: top 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                left 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.2s ease;
+}
+
+#agent-spotlight-box.active {
+    opacity: 1;
+}
+
+/* ==========================================================================
+   2. TARJETA POPOVER (ENTERPRISE HUD)
+   ========================================================================== */
+
+#agent-popover-card {
+    position: fixed;
+    z-index: 999990;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    background: var(--guide-surface-glass);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--guide-border);
+    border-radius: var(--guide-radius-lg);
+    padding: 20px;
+    box-shadow: var(--guide-shadow-popover);
+    color: var(--guide-text-primary);
+    font-family: var(--guide-font);
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#agent-popover-card.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.agent-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--guide-border-subtle);
+}
+
+.agent-header-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.agent-status-indicator {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--guide-accent);
+    box-shadow: 0 0 8px var(--guide-accent);
+}
+
+.agent-badge-pill {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--guide-text-secondary);
+}
+
+.agent-step-pill {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--guide-text-tertiary);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 7px;
+    border-radius: 4px;
+    border: 1px solid var(--guide-border-subtle);
+}
+
+.agent-btn-icon-close {
+    background: transparent;
+    border: none;
+    color: var(--guide-text-tertiary);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: var(--guide-radius-sm);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.agent-btn-icon-close:hover {
+    color: var(--guide-text-primary);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.agent-popover-body h4 {
+    margin: 0 0 6px 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--guide-text-primary);
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+}
+
+.agent-popover-body p {
+    margin: 0 0 14px 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--guide-text-secondary);
+}
+
+.agent-context-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    background: var(--guide-accent-subtle);
+    border: 1px solid rgba(37, 99, 235, 0.2);
+    border-radius: var(--guide-radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #cbd5e1;
+}
+
+.agent-context-callout svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: #60a5fa;
+}
+
+.agent-progress-track {
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 1px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+
+.agent-progress-fill {
+    height: 100%;
+    background: var(--guide-accent);
+    width: 0%;
+    transition: width 0.25s ease;
+}
+
+.agent-popover-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.btn-guide-dismiss-forever {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: none;
+    color: var(--guide-text-tertiary);
+    font-size: 11.5px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--guide-radius-sm);
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.btn-guide-dismiss-forever:hover {
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.agent-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-guide-secondary {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--guide-border);
+    color: var(--guide-text-secondary);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 12px;
+    border-radius: var(--guide-radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-guide-secondary:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--guide-text-primary);
+    border-color: rgba(255, 255, 255, 0.18);
+}
+
+.btn-guide-secondary:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.btn-guide-primary {
+    background: var(--guide-accent);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: var(--guide-radius-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-guide-primary:hover {
+    background: var(--guide-accent-hover);
+}
+
+/* ==========================================================================
+   3. BOTÓN FLOTANTE (HUD TRIGGER)
+   ========================================================================== */
+
+#agent-fab-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 999970;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    font-family: var(--guide-font);
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#agent-fab-trigger {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--guide-surface-elevated);
+    border: 1px solid var(--guide-border);
+    color: var(--guide-text-primary);
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 12.5px;
+    font-weight: 500;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#agent-fab-trigger:hover {
+    background: #273549;
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+#agent-fab-trigger svg {
+    color: #60a5fa;
+    flex-shrink: 0;
+}
+
+#agent-fab-menu {
+    background: var(--guide-surface-glass);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid var(--guide-border);
+    border-radius: var(--guide-radius-md);
+    padding: 6px;
+    box-shadow: var(--guide-shadow-popover);
+    width: 220px;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#agent-fab-menu.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.agent-fab-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    border-radius: var(--guide-radius-sm);
+    color: var(--guide-text-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.12s ease;
+}
+
+.agent-fab-menu-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--guide-text-primary);
+}
+
+.agent-fab-menu-item svg {
+    color: var(--guide-text-tertiary);
+    flex-shrink: 0;
+}
+
+.agent-fab-menu-item:hover svg {
+    color: #60a5fa;
+}
+
+.agent-fab-menu-item.agent-menu-danger:hover {
+    background: var(--guide-danger-subtle);
+    color: #fca5a5;
+}
+
+.agent-fab-menu-item.agent-menu-danger:hover svg {
+    color: var(--guide-danger);
+}
+
+.agent-menu-divider {
+    height: 1px;
+    background: var(--guide-border-subtle);
+    margin: 4px 0;
+}

@@ -1,0 +1,372 @@
+/* ==========================================================================
+   Módulo de Autenticación - Vista de Inicio de Sesión
+   Ingeniería de Software
+   Diseño: Arquitectura de 2 columnas (Escritorio) / Fondo blanco unificado
+   ========================================================================== */
+
+:root {
+    --bg-primary: #ffffff;
+    --bg-surface: #ffffff;
+    --border-color: #e2e8f0;
+    --border-focus: #0d9488;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-light: #ffffff;
+
+    --brand-primary: #0f766e;
+    --brand-hover: #115e59;
+    --brand-light: #f0fdfa;
+    --brand-border: #ccfbf1;
+
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --danger-border: #fecaca;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    min-height: 100vh;
+    background-color: var(--bg-primary);
+    font-family: var(--font-family);
+    color: var(--text-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Contenedor principal dividido en dos columnas */
+.login-container {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+    background-color: var(--bg-primary);
+}
+
+/* ==========================================================================
+   Columna Izquierda: Formulario de Inicio de Sesión
+   ========================================================================== */
+.login-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 30px;
+    background-color: var(--bg-primary);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    background-color: var(--bg-surface);
+}
+
+.brand-header {
+    margin-bottom: 32px;
+}
+
+.brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: var(--brand-light);
+    color: var(--brand-primary);
+    border: 1px solid var(--brand-border);
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+}
+
+.brand-badge svg {
+    width: 16px;
+    height: 16px;
+}
+
+.login-card h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+}
+
+.login-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+/* Alerta de notificación */
+.alert {
+    display: none;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    margin-bottom: 20px;
+    align-items: center;
+    gap: 10px;
+}
+
+.alert-danger {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
+}
+
+.alert.show {
+    display: flex;
+}
+
+/* Formulario */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 14px;
+    color: var(--text-muted);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.input-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 14px 12px 42px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:hover {
+    border-color: #cbd5e1;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
+/* Mantener fondo blanco incluso con autocompletado del navegador */
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover, 
+.form-control:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+    -webkit-text-fill-color: var(--text-primary) !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+}
+
+.toggle-password:hover {
+    color: var(--text-primary);
+}
+
+.toggle-password svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Botón de envío */
+.btn-submit {
+    width: 100%;
+    padding: 13px;
+    background-color: var(--brand-primary);
+    color: var(--text-light);
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 4px rgba(15, 118, 110, 0.15);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.btn-submit:hover {
+    background-color: var(--brand-hover);
+    box-shadow: 0 4px 8px rgba(15, 118, 110, 0.25);
+}
+
+.btn-submit:active {
+    transform: translateY(1px);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Enlace a Registro */
+.login-footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.login-footer a {
+    color: var(--brand-primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.login-footer a:hover {
+    color: var(--brand-hover);
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Columna Derecha: Título del Proyecto e Ilustración Animada (SVG)
+   ========================================================================== */
+.login-right {
+    flex: 1.3;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 36px 30px;
+    background-color: var(--bg-primary);
+    border-left: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.right-content {
+    width: 90%;
+    max-width: 920px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.project-header {
+    text-align: center;
+    width: 100%;
+}
+
+.project-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.6px;
+    line-height: 1.25;
+}
+
+.project-title span {
+    color: var(--brand-primary);
+}
+
+.illustration-container {
+    width: 100%;
+    height: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: fadeInIllustration 0.6s ease-out;
+}
+
+.animated-illustration {
+    width: 100%;
+    max-height: 70vh;
+    display: block;
+    object-fit: contain;
+    filter: drop-shadow(0 12px 30px rgba(11, 79, 108, 0.08));
+}
+
+@keyframes fadeInIllustration {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* ==========================================================================
+   Diseño Responsivo (Celulares y Dispositivos Móviles)
+   ========================================================================== */
+@media (max-width: 900px) {
+    .login-container {
+        flex-direction: column;
+    }
+
+    /* Ocultar la columna derecha en celulares según requerimiento */
+    .login-right {
+        display: none !important;
+    }
+
+    .login-left {
+        width: 100%;
+        min-height: 100vh;
+        padding: 32px 20px;
+        justify-content: center;
+    }
+
+    .login-card {
+        max-width: 440px;
+    }
+}
