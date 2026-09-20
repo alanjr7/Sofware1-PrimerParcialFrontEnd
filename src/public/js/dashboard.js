@@ -22,13 +22,23 @@ document.getElementById('logout-button')?.addEventListener('click', function (e)
     }
 });
 
+function getHeaders(custom = {}) {
+    if (typeof window.getAuthHeaders === 'function') {
+        return window.getAuthHeaders(custom);
+    }
+    const token = localStorage.getItem('token');
+    return {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...custom
+    };
+}
+
 function fetchUserInfo() {
     fetch(`${API_URL}/apis/`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
     })
     .then(handleResponse)
     .then(data => {
@@ -110,9 +120,7 @@ function fetchRooms() {
     fetch(`${API_URL}/apis/sala`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
     })
     .then(handleResponse)
     .then(data => {
@@ -153,9 +161,7 @@ function fetchSharedRooms() {
     fetch(`${API_URL}/apis/userSala/`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
     })
     .then(handleResponse)
     .then(data => {
@@ -250,9 +256,7 @@ function fetchMeetings() {
     fetch(`${API_URL}/apis/reuniones`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-            'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
     })
     .then(handleResponse)
     .then(data => {
@@ -390,7 +394,7 @@ function openScheduleMeetingModal() {
         fetch(`${API_URL}/apis/sala`, {
             method: 'GET',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
+            headers: getHeaders()
         })
         .then(handleResponse)
         .then(data => {
@@ -414,7 +418,7 @@ function openScheduleMeetingModal() {
         fetch(`${API_URL}/apis/notEmail`, {
             method: 'GET',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
+            headers: getHeaders()
         })
         .then(handleResponse)
         .then(data => {
@@ -476,9 +480,7 @@ async function saveScheduleMeeting() {
         const response = await fetch(`${API_URL}/apis/reuniones`, {
             method: 'POST',
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: getHeaders(),
             body: JSON.stringify({
                 title,
                 description,
@@ -524,7 +526,7 @@ function openInviteToMeetingModal(meetingId, meetingTitle) {
     fetch(`${API_URL}/apis/notEmail`, {
         method: 'GET',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' }
+        headers: getHeaders()
     })
     .then(handleResponse)
     .then(data => {
@@ -552,7 +554,7 @@ function openInviteToMeetingModal(meetingId, meetingTitle) {
             const resp = await fetch(`${API_URL}/apis/reuniones/${meetingId}/invitar`, {
                 method: 'POST',
                 credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getHeaders(),
                 body: JSON.stringify({ userId: parseInt(userId, 10) })
             });
 
@@ -575,6 +577,7 @@ async function deleteMeeting(meetingId) {
             const response = await fetch(`${API_URL}/apis/reuniones/${meetingId}`, {
                 method: 'DELETE',
                 credentials: 'include',
+                headers: getHeaders()
             });
             if (response.ok) {
                 fetchMeetings();
@@ -780,9 +783,7 @@ async function saveUserProfile() {
         const response = await fetch(`${API_URL}/apis/`, {
             method: 'PUT',
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: getHeaders(),
             body: JSON.stringify(bodyPayload)
         });
 
@@ -816,9 +817,7 @@ async function deleteUserAccount() {
         const response = await fetch(`${API_URL}/apis/`, {
             method: 'DELETE',
             credentials: 'include',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: getHeaders()
         });
 
         const result = await response.json();

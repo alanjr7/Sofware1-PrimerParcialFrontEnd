@@ -30,11 +30,13 @@ document.getElementById('create-room-form').addEventListener('submit', async fun
     };
 
     try {
+        const token = localStorage.getItem('token');
         const response = await fetch(`${API_URL}/apis/sala/`, {
             method: 'POST',
             credentials: 'include',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
             body: JSON.stringify(roomData)
         });

@@ -154,11 +154,13 @@
                 if (breadcrumbSpan) breadcrumbSpan.textContent = `Sala #${roomId}`;
 
                 try {
+                    const token = localStorage.getItem('token');
                     const response = await fetch(`${API_URL}/apis/sala/${roomId}`, {
                         method: 'GET',
                         credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                         }
                     });
                     const data = await response.json();
@@ -188,11 +190,13 @@
             const description = document.getElementById('description').value;
 
             try {
+                const token = localStorage.getItem('token');
                 const response = await fetch(`${API_URL}/apis/sala/${id}`, {
                     method: 'PUT',
                     credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                     },
                     body: JSON.stringify({
                         title: title.trim(),

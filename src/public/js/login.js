@@ -83,6 +83,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     const data = await response.json().catch(() => ({}));
+                    const token = data.token || data.data?.token;
+                    if (token) {
+                        localStorage.setItem('token', token);
+                    }
                     const user = data.data?.user || data.user || data.data;
                     if (user && user.name) {
                         localStorage.setItem('userName', user.name);

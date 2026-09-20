@@ -93,6 +93,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 const responseData = await response.json().catch(() => ({}));
 
                 if (response.ok) {
+                    const token = responseData.token || responseData.data?.token;
+                    if (token) {
+                        localStorage.setItem('token', token);
+                    }
+                    const user = responseData.user || responseData.data?.user || responseData.data;
+                    if (user && user.name) {
+                        localStorage.setItem('userName', user.name);
+                        localStorage.setItem('userId', user.id);
+                        if (user.email) localStorage.setItem('userEmail', user.email);
+                    }
                     window.location.href = './dashboard.html';
                 } else {
                     const msg = responseData.message || 'Error en el registro. Por favor verifica los datos ingresados.';
