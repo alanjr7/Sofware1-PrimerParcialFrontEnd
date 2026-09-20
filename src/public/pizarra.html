@@ -4912,10 +4912,11 @@
                     // Mostrar mensaje de carga
                     this.showValidationMessage('🔄 Generando proyecto Spring Boot...', 'info');
                     
-                    const response = await fetch(`http://localhost:8083/apis/crearPagina/exportarSpringBoot/${salaId}`, {
+                    const response = await fetch(`${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/crearPagina/exportarSpringBoot/${salaId}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
                         }
                         // ✅ NO ENVIAMOS BODY - El backend usa el XML de la sala directamente
                     });
@@ -4977,10 +4978,11 @@
                     
                     console.log('Datos normalizados para Spring Boot:', normalizedData);
                     
-                    const response = await fetch('http://localhost:8083/apis/crearPagina/exportarSpringBoot', {
+                    const response = await fetch(`${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/crearPagina/exportarSpringBoot`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
                         },
                         body: JSON.stringify(normalizedData)
                     });
@@ -11213,21 +11215,25 @@
                     ConnectionManager.connections = [];
                     DiagramManager.setStorageKey(`sala-${salaId}`);
                     this.showLoadingIndicator(true, 'Cargando sala...');
-                    let apiBaseUrl = 'http://localhost:8083';
+                    let apiBaseUrl = typeof API_URL !== 'undefined' ? API_URL : '';
                     let response;
                     try {
                         const url = `${apiBaseUrl}/apis/sala/${salaId}`;
                         console.log(`📡 Intentando cargar desde: ${url}`);
-                        response = await fetch(url);
+                        response = await fetch(url, {
+                            headers: localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}
+                        });
                         console.log(`📨 Respuesta recibida - Status: ${response.status}`);
                     } catch (fetchError) {
                         console.warn(`⚠️ Error con URL ${apiBaseUrl}: ${fetchError.message}`);
                         console.log('🔄 Intentando con URL alternativa...');
-                        apiBaseUrl = 'http://localhost:8083';
+                        apiBaseUrl = typeof API_URL !== 'undefined' ? API_URL : '';
                         try {
                             const altUrl = `${apiBaseUrl}/apis/sala/${salaId}`;
                             console.log(`📡 Intentando cargar desde URL alternativa: ${altUrl}`);
-                            response = await fetch(altUrl);
+                            response = await fetch(altUrl, {
+                                headers: localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}
+                            });
                             console.log(`📨 Respuesta alternativa - Status: ${response.status}`);
                         } catch (altFetchError) {
                             throw new Error(`No se pudo conectar con el servidor: ${altFetchError.message}`);
@@ -11826,12 +11832,13 @@
                     console.log(`📏 Tamaño de los datos a guardar: ${xmlData.length} bytes`);
                     
                     // Hacer la petición al servidor
-                    const url = `http://localhost:8083/apis/sala/${salaId}`;
+                    const url = `${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/sala/${salaId}`;
                     console.log(`📡 Enviando datos a: ${url}`);
                     const response = await fetch(url, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json',
+                            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
                         },
                         body: JSON.stringify({
                             xml: xmlData
@@ -11858,7 +11865,7 @@
                     this.showSaveStatus(true);
                 } catch (error) {
                     console.error('❌ Error guardando diagrama:', error);
-                    console.error('📄 URL que falló:', `http://localhost:8083/apis/sala/${salaId}`);
+                    console.error('📄 URL que falló:', `${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/sala/${salaId}`);
                     this.showSaveStatus(false, error.message);
                 }
             }
@@ -12076,7 +12083,7 @@
                 this.lastSyncTime = null;
                 this.syncQueue = [];
                 this.isProcessingSync = false;
-                this.apiUrl = typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:8083';
+                this.apiUrl = typeof API_URL !== 'undefined' ? API_URL : '';
                 
                 this.init();
             }
@@ -12213,7 +12220,9 @@
                 try {
                     console.log(`🔍 Verificando si usuario ${userId} es invitado a sala ${this.salaId}...`);
                     
-                    const response = await fetch(`http://localhost:8083/apis/usersala/user/${userId}/salas`);
+                    const response = await fetch(`${this.apiUrl || ''}/apis/usersala/user/${userId}/salas`, {
+                        headers: localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}
+                    });
                     if (response.ok) {
                         const userSalas = await response.json();
                         this.isUserInvited = userSalas.some(sala => sala.id == this.salaId);
@@ -12232,7 +12241,9 @@
                 try {
                     console.log(`🔍 Verificando usuarios invitados en sala ${this.salaId}...`);
                     
-                    const response = await fetch(`http://localhost:8083/apis/usersala/sala/${this.salaId}`);
+                    const response = await fetch(`${this.apiUrl || ''}/apis/usersala/sala/${this.salaId}`, {
+                        headers: localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {}
+                    });
                     if (response.ok) {
                         const usersInRoom = await response.json();
                         console.log('👥 Usuarios en la sala:', usersInRoom);
@@ -12264,7 +12275,8 @@
             
             initSocket() {
                 // Conectar al servidor Socket.IO con configuración más robusta
-                this.socket = io('http://localhost:8083', {
+                const socketTarget = (typeof API_URL !== 'undefined' && API_URL) ? API_URL : window.location.origin;
+                this.socket = io(socketTarget, {
                     transports: ['websocket', 'polling'],
                     forceNew: true,
                     reconnection: true,
@@ -14015,10 +14027,11 @@
                     const currentDiagram = typeof DiagramAuditManager !== 'undefined' ? DiagramAuditManager.extractDiagramData() : { elements: [], relationships: [] };
 
                     // Send to backend
-                    const response = await fetch('http://localhost:8083/apis/ai/generate-diagram', {
+                    const response = await fetch(`${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/ai/generate-diagram`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
                         },
                         body: JSON.stringify({
                             type: 'text',
@@ -14110,8 +14123,9 @@
                     formData.append('salaId', this.salaId);
                     formData.append('currentDiagram', JSON.stringify(currentDiagram));
 
-                    const response = await fetch('http://localhost:8083/apis/ai/generate-diagram', {
+                    const response = await fetch(`${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/ai/generate-diagram`, {
                         method: 'POST',
+                        headers: localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {},
                         body: formData
                     });
 
@@ -14157,9 +14171,10 @@
                     formData.append('image', imageFile);
                     formData.append('salaId', this.salaId);
                     formData.append('currentDiagram', JSON.stringify(currentDiagram));
-                    const response = await fetch('http://localhost:8083/apis/ai/generate-diagram', {
+                    const response = await fetch(`${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/ai/generate-diagram`, {
                         method: 'POST',
                         credentials: 'include',
+                        headers: localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {},
                         body: formData
                     });
                     const result = await response.json();
@@ -14827,7 +14842,7 @@
             static historyModal = null;
             static saveModal = null;
             static previewModal = null;
-            static apiBaseUrl = 'http://localhost:8083';
+            static apiBaseUrl = typeof API_URL !== 'undefined' ? API_URL : '';
 
             static init() {
                 try {
@@ -15358,7 +15373,7 @@
         // DIAGRAM AUDIT MANAGER (AGENTE IA DE ARQUITECTURA Y AUDITORÍA CON SKILLS)
         // ==========================================================================
         class DiagramAuditManager {
-            static apiBaseUrl = 'http://localhost:8083';
+            static apiBaseUrl = typeof API_URL !== 'undefined' ? API_URL : '';
             static currentSuggestions = new Map();
 
             static getSalaId() {

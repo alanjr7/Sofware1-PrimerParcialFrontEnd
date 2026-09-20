@@ -5,7 +5,7 @@
 
 (function () {
     // Configuración base de API si no estuviese cargada
-    const BASE_URL = typeof API_URL !== 'undefined' ? API_URL : 'http://localhost:8083';
+    const BASE_URL = typeof API_URL !== 'undefined' ? API_URL : '';
 
     /**
      * Guardia de Ruta Inmediato:
