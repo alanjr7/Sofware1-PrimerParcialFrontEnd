@@ -388,6 +388,7 @@
                     const response = await fetch(`${API_URL}/apis/sala/${id}`, {
                         method: 'DELETE',
                         credentials: 'include',
+                        headers: typeof getHeaders === 'function' ? getHeaders() : { 'Content-Type': 'application/json' },
                     });
                     if (response.ok) {
                         fetchRooms();
@@ -408,9 +409,7 @@
             fetch(`${API_URL}/apis/notEmail`, {
                 method: 'GET',
                 credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: typeof getHeaders === 'function' ? getHeaders() : { 'Content-Type': 'application/json' },
             })
             .then(handleResponse)
             .then(data => {
@@ -454,9 +453,7 @@
                 const response = await fetch(`${API_URL}/apis/usersala/`, {
                     method: 'POST',
                     credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: typeof getHeaders === 'function' ? getHeaders() : { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ salas_id: Number(salas_id), userId: Number(userId) }),
                 });
                 if (response.ok) {
