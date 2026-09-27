@@ -14264,6 +14264,7 @@
                                 diagramData.relationships.forEach(rel => {
                                     this.createRelationship(rel);
                                 });
+                                this.postProcessManyToManyAssociations();
                             }, 250);
                         }
                         
@@ -14320,14 +14321,24 @@
 
                 if (existingClass) {
                     console.log('🔄 Clase existente encontrada, enriqueciendo:', existingClass.name);
-                    // Actualizar atributos faltantes
+                    
+                    // Actualizar estereotipo si se especifica
+                    if (classData.stereotype !== undefined && classData.stereotype !== existingClass.stereotype) {
+                        existingClass.stereotype = classData.stereotype;
+                    }
+
+                    // Actualizar atributos faltantes o enriquecer existentes
                     if (classData.attributes && Array.isArray(classData.attributes)) {
                         classData.attributes.forEach(attr => {
                             if (attr && attr.name) {
                                 const attrName = String(attr.name).toLowerCase();
-                                const attrExists = (existingClass.attributes || []).some(a => a && a.name && String(a.name).toLowerCase() === attrName);
-                                if (!attrExists) {
+                                const existingAttr = (existingClass.attributes || []).find(a => a && a.name && String(a.name).toLowerCase() === attrName);
+                                if (!existingAttr) {
                                     this.addAttributeToClass(existingClass, attr);
+                                } else {
+                                    if (attr.isPrimaryKey !== undefined) existingAttr.isPrimaryKey = !!attr.isPrimaryKey;
+                                    if (attr.isForeignKey !== undefined) existingAttr.isForeignKey = !!attr.isForeignKey;
+                                    if (attr.type && !existingAttr.type) existingAttr.type = attr.type;
                                 }
                             }
                         });
@@ -14347,6 +14358,12 @@
                     if (typeof existingClass.updateDisplay === 'function') {
                         existingClass.updateDisplay();
                     }
+
+                    const domEl = document.getElementById(existingClass.id);
+                    if (domEl) {
+                        domEl.setAttribute('data-stereotype', existingClass.stereotype || '');
+                    }
+
                     return existingClass;
                 }
 
@@ -14369,6 +14386,9 @@
                     
                     if (typeof UMLClass !== 'undefined') {
                         const classElement = new UMLClass(classId, position.x, position.y, className);
+                        if (classData.stereotype) {
+                            classElement.stereotype = classData.stereotype;
+                        }
                         
                         if (typeof DiagramManager !== 'undefined' && DiagramManager.elements) {
                             DiagramManager.elements.set(classId, classElement);
@@ -14389,6 +14409,11 @@
 
                         if (typeof classElement.updateDisplay === 'function') {
                             classElement.updateDisplay();
+                        }
+
+                        const domEl = document.getElementById(classId);
+                        if (domEl && classElement.stereotype) {
+                            domEl.setAttribute('data-stereotype', classElement.stereotype);
                         }
                         
                         console.log('✅ Clase UML creada y registrada en DiagramManager:', className);
@@ -14411,6 +14436,7 @@
                     const attrType = String(attribute.type || 'String').trim();
                     const attrVis = String(attribute.visibility || 'private').trim();
                     const isPK = !!attribute.isPrimaryKey;
+                    const isFK = !!attribute.isForeignKey;
 
                     if (typeof classElement.addAttribute === 'function') {
                         const attr = {
@@ -14418,6 +14444,7 @@
                             type: attrType,
                             visibility: attrVis,
                             isPrimaryKey: isPK,
+                            isForeignKey: isFK,
                             defaultValue: attribute.defaultValue || null
                         };
                         classElement.addAttribute(attr);
@@ -14428,6 +14455,7 @@
                             type: attrType,
                             visibility: attrVis,
                             isPrimaryKey: isPK,
+                            isForeignKey: isFK,
                             defaultValue: attribute.defaultValue || null
                         });
                         if (typeof classElement.updateDisplay === 'function') classElement.updateDisplay();
@@ -14487,6 +14515,9 @@
                 classElement.style.top = position.y + 'px';
                 classElement.style.minWidth = '150px';
                 classElement.style.cursor = 'pointer';
+                if (classData?.stereotype) {
+                    classElement.setAttribute('data-stereotype', classData.stereotype);
+                }
                 
                 classElement.innerHTML = `
                     <div class="class-header" style="padding: 8px; font-weight: bold; text-align: center;">
@@ -14539,14 +14570,98 @@
                 const sourceId = sourceEl.id;
                 const targetId = targetEl.id;
 
-                // Evitar duplicados
-                const alreadyExists = (ConnectionManager.connections || []).some(c => 
+                let assocTableId = null;
+                if (relationshipData.associationTable) {
+                    const rawAssoc = String(relationshipData.associationTable).trim();
+                    const assocEl = DiagramManager.elements.get(rawAssoc) || 
+                                    Array.from(DiagramManager.elements.values()).find(e => e && e.name && String(e.name).toLowerCase() === rawAssoc.toLowerCase());
+                    if (assocEl) {
+                        assocTableId = assocEl.id;
+                        if (assocEl.stereotype !== 'association_table') {
+                            assocEl.stereotype = 'association_table';
+                            if (typeof assocEl.updateDisplay === 'function') assocEl.updateDisplay();
+                            const domEl = document.getElementById(assocEl.id);
+                            if (domEl) domEl.setAttribute('data-stereotype', 'association_table');
+                        }
+                    }
+                }
+
+                let type = relationshipData.type || 'association';
+                if ((type === 'many-to-many' || type === 'many-to-many-direct') && assocTableId) {
+                    type = 'many-to-many-direct';
+                }
+
+                const card = String(relationshipData.cardinality || '').trim();
+
+                if (type === 'many-to-many-direct' && assocTableId) {
+                    // Limpiar conexiones binarias intermedias redundantes que apunten a assocTableId desde source o target
+                    ConnectionManager.connections = (ConnectionManager.connections || []).filter(c => 
+                        !((c.source === sourceId && c.target === assocTableId) || (c.source === assocTableId && c.target === sourceId) ||
+                          (c.source === targetId && c.target === assocTableId) || (c.source === assocTableId && c.target === targetId))
+                    );
+
+                    // Buscar si ya existe la conexión many-to-many-direct
+                    const existingIndex = (ConnectionManager.connections || []).findIndex(c => 
+                        c.type === 'many-to-many-direct' &&
+                        ((c.source === sourceId && c.target === targetId) || (c.source === targetId && c.target === sourceId))
+                    );
+
+                    const directConn = {
+                        id: relationshipData.id || `conn_${Date.now()}_direct`,
+                        source: sourceId,
+                        target: targetId,
+                        type: 'many-to-many-direct',
+                        sourceMultiplicity: card.includes(':') ? card.split(':')[0] : (card || '*'),
+                        targetMultiplicity: card.includes(':') ? card.split(':')[1] : (card || '*'),
+                        label: relationshipData.label || '',
+                        associationTable: assocTableId,
+                        manyToManyGroup: `mnm_${Date.now()}`,
+                        style: 'straight-intersection'
+                    };
+
+                    if (existingIndex !== -1) {
+                        ConnectionManager.connections[existingIndex] = directConn;
+                    } else {
+                        ConnectionManager.connections.push(directConn);
+                    }
+
+                    if (typeof ConnectionManager.updateConnections === 'function') {
+                        ConnectionManager.updateConnections();
+                    }
+                    console.log('✅ Relación Many-to-Many Direct trazada exitosamente:', directConn);
+                    return;
+                }
+
+                // Buscar si ya existe la conexión entre estas dos entidades
+                const existingConnIndex = (ConnectionManager.connections || []).findIndex(c => 
                     (c.source === sourceId && c.target === targetId) || (c.source === targetId && c.target === sourceId)
                 );
 
-                if (!alreadyExists) {
-                    const type = relationshipData.type || 'association';
-                    const card = String(relationshipData.cardinality || '').trim();
+                if (existingConnIndex !== -1) {
+                    // Actualizar relación existente con nuevos datos
+                    const existingConn = ConnectionManager.connections[existingConnIndex];
+                    let changed = false;
+                    if (type && existingConn.type !== type) {
+                        existingConn.type = type;
+                        changed = true;
+                    }
+                    if (card) {
+                        existingConn.cardinality = card;
+                        if (card.includes(':')) {
+                            existingConn.sourceMultiplicity = card.split(':')[0];
+                            existingConn.targetMultiplicity = card.split(':')[1];
+                        }
+                        changed = true;
+                    }
+                    if (relationshipData.label !== undefined) {
+                        existingConn.label = relationshipData.label;
+                        changed = true;
+                    }
+                    if (changed && typeof ConnectionManager.updateConnections === 'function') {
+                        ConnectionManager.updateConnections();
+                    }
+                    console.log('🔄 Relación existente actualizada:', existingConn);
+                } else {
                     const conn = {
                         id: relationshipData.id || `conn_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                         source: sourceId,
@@ -14566,6 +14681,51 @@
                     }
                     console.log('✅ Relación trazada exitosamente:', conn);
                 }
+            }
+
+            postProcessManyToManyAssociations() {
+                if (typeof DiagramManager === 'undefined' || typeof ConnectionManager === 'undefined') return;
+                
+                DiagramManager.elements.forEach(element => {
+                    if (element && (element.stereotype === 'association_table' || element.stereotype === 'association_class')) {
+                        // Buscar conexiones directas binarias que apunten a esta tabla intermedia
+                        const connsToAssoc = (ConnectionManager.connections || []).filter(c => 
+                            c.type !== 'many-to-many-direct' && (c.source === element.id || c.target === element.id)
+                        );
+                        
+                        // Si hay exactamente 2 conexiones desde 2 entidades distintas (ej: Venta y Producto)
+                        if (connsToAssoc.length === 2) {
+                            const entityA = connsToAssoc[0].source === element.id ? connsToAssoc[0].target : connsToAssoc[0].source;
+                            const entityB = connsToAssoc[1].source === element.id ? connsToAssoc[1].target : connsToAssoc[1].source;
+                            
+                            if (entityA && entityB && entityA !== entityB) {
+                                console.log('🔄 Unificando conexiones de tabla intermedia en Many-to-Many Direct (T punteada UML):', entityA, entityB, element.name);
+                                
+                                // Eliminar las dos conexiones binarias individuales
+                                ConnectionManager.connections = ConnectionManager.connections.filter(c => !connsToAssoc.includes(c));
+                                
+                                // Crear la conexión many-to-many-direct con la T punteada
+                                const directConn = {
+                                    id: `conn_${Date.now()}_direct`,
+                                    source: entityA,
+                                    target: entityB,
+                                    type: 'many-to-many-direct',
+                                    sourceMultiplicity: 'N',
+                                    targetMultiplicity: 'M',
+                                    label: '',
+                                    associationTable: element.id,
+                                    manyToManyGroup: `mnm_${Date.now()}`,
+                                    style: 'straight-intersection'
+                                };
+                                
+                                ConnectionManager.connections.push(directConn);
+                                if (typeof ConnectionManager.updateConnections === 'function') {
+                                    ConnectionManager.updateConnections();
+                                }
+                            }
+                        }
+                    }
+                });
             }
 
             restoreInteractionFunctionality() {
