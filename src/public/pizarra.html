@@ -6143,8 +6143,27 @@
                     if (!connectionsData && diagramData.diagram && diagramData.diagram.connections) {
                         connectionsData = diagramData.diagram.connections;
                     }
+                    if (!connectionsData && diagramData.relationships) {
+                        connectionsData = diagramData.relationships;
+                    }
+                    if (!connectionsData && diagramData.data && diagramData.data.relationships) {
+                        connectionsData = diagramData.data.relationships;
+                    }
                     if (connectionsData && Array.isArray(connectionsData)) {
+                        connectionsData.forEach(conn => {
+                            if (!document.getElementById(conn.source)) {
+                                const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && el.name.toLowerCase() === String(conn.source).toLowerCase());
+                                if (matched) conn.source = matched.id;
+                            }
+                            if (!document.getElementById(conn.target)) {
+                                const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && el.name.toLowerCase() === String(conn.target).toLowerCase());
+                                if (matched) conn.target = matched.id;
+                            }
+                        });
                         ConnectionManager.connections = connectionsData;
+                        ConnectionManager.updateConnections();
+                    } else if (ConnectionManager.connections && ConnectionManager.connections.length > 0 && !diagramData.clearConnections) {
+                        console.log('ℹ️ Preservando conexiones existentes en canvas');
                         ConnectionManager.updateConnections();
                     } else {
                         console.warn('⚠️ No hay conexiones en el diagrama o formato inválido');
@@ -11923,10 +11942,31 @@
                             console.log('✅ Conexiones encontradas en diagramData.diagram');
                         }
                         
+                        // Fallback relationships
+                        if (!connectionsData && diagramData.relationships) {
+                            connectionsData = diagramData.relationships;
+                        }
+                        if (!connectionsData && diagramData.data && diagramData.data.relationships) {
+                            connectionsData = diagramData.data.relationships;
+                        }
+
                         // Cargar conexiones si existen
                         if (connectionsData && Array.isArray(connectionsData)) {
                             console.log('🔗 Cargando conexiones:', connectionsData.length, 'conexiones');
+                            connectionsData.forEach(conn => {
+                                if (!document.getElementById(conn.source)) {
+                                    const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && el.name.toLowerCase() === String(conn.source).toLowerCase());
+                                    if (matched) conn.source = matched.id;
+                                }
+                                if (!document.getElementById(conn.target)) {
+                                    const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && el.name.toLowerCase() === String(conn.target).toLowerCase());
+                                    if (matched) conn.target = matched.id;
+                                }
+                            });
                             ConnectionManager.connections = connectionsData;
+                            ConnectionManager.updateConnections();
+                        } else if (ConnectionManager.connections && ConnectionManager.connections.length > 0 && !diagramData.clearConnections) {
+                            console.log('ℹ️ Preservando conexiones existentes en canvas (SalaManager)');
                             ConnectionManager.updateConnections();
                         } else {
                             console.warn('⚠️ No hay conexiones en el diagrama o formato inválido');
