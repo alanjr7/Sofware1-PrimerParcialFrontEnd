@@ -13746,6 +13746,9 @@
             static renderMessage(mensaje, animate = true) {
                 const container = document.getElementById('room-chat-messages');
                 if (!container) return;
+                if (mensaje && mensaje.id && container.querySelector(`[data-msg-id="${mensaje.id}"]`)) {
+                    return; // Ya está renderizado en el feed
+                }
 
                 const currentUserId = this.usuarioInfo?.id || window.pizarraColaborativa?.usuarioInfo?.id;
                 const isAI = mensaje.usuario && (mensaje.usuario.isAI === true || mensaje.usuario.id === 'ai_architect');
@@ -13768,6 +13771,7 @@
                 }
                 row.className = rowClass;
                 if (!animate) row.style.animation = 'none';
+                if (mensaje && mensaje.id) row.setAttribute('data-msg-id', mensaje.id);
 
                 let avatarHtml = '';
                 let senderName = '';
@@ -16355,7 +16359,9 @@
                         const originalEmit = window.pizarraColaborativa.socket.emit;
                         
                         window.pizarraColaborativa.socket.emit = function(...args) {
-                            if (window.BLOCK_ALL_SOCKET_IO) {
+                            const eventName = args[0];
+                            const criticalEvents = ['unirseSala', 'enviarMensajeChat', 'solicitarEstado', 'historialChat'];
+                            if (window.BLOCK_ALL_SOCKET_IO && !criticalEvents.includes(eventName)) {
                                 console.log('🚫 Socket.emit BLOQUEADO:', args[0]);
                                 return;
                             }
