@@ -3234,6 +3234,9 @@
                 <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="DiagramManager.exportSpringBoot()">
                     <i class="fas fa-code me-1"></i> Exportar Spring Boot
                 </button>
+                <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="DiagramManager.exportLaravel()" title="Exportar Backend REST API en Laravel">
+                    <i class="fab fa-laravel me-1 text-danger"></i> Exportar Laravel
+                </button>
                 <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="DiagramManager.importDiagram()">
                     <i class="fas fa-upload me-1"></i> Importar Diagrama
                 </button>
@@ -4958,6 +4961,61 @@
                     }
                 } catch (error) {
                     console.error('❌ Error al exportar Spring Boot:', error);
+                    const errorMessage = error.message || error.toString() || 'Error desconocido';
+                    this.showValidationMessage(`❌ Error al conectar con el servidor: ${errorMessage}`, 'error');
+                }
+            }
+
+            static async exportLaravel() {
+                try {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const salaId = urlParams.get('id');
+                    
+                    if (!salaId || salaId === 'default') {
+                        alert('⚠️ No se puede exportar: No hay una sala específica abierta.\n💡 Abre una sala desde el dashboard para poder exportar a Laravel.');
+                        return;
+                    }
+
+                    console.log(`🗃️ Exportando Laravel desde sala ID: ${salaId}`);
+                    this.showValidationMessage('🔄 Generando proyecto Laravel REST API...', 'info');
+                    
+                    const response = await fetch(`${typeof API_URL !== 'undefined' ? API_URL : ''}/apis/crearPagina/exportarLaravel/${salaId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(localStorage.getItem('token') ? { 'Authorization': `Bearer ${localStorage.getItem('token')}` } : {})
+                        }
+                    });
+
+                    console.log('📡 Respuesta del servidor (Laravel):', {
+                        status: response.status,
+                        statusText: response.statusText
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = url;
+                        downloadLink.download = `laravel-backend-sala-${salaId}.zip`;
+                        downloadLink.click();
+                        URL.revokeObjectURL(url);
+                        console.log('✅ Proyecto Laravel generado exitosamente desde XML de sala');
+                        this.showValidationMessage('🚀 Proyecto Laravel API generado y descargado correctamente', 'success');
+                    } else {
+                        let errorMessage = `Error ${response.status}: ${response.statusText}`;
+                        try {
+                            const errorData = await response.json();
+                            console.error('❌ Error del servidor:', errorData);
+                            errorMessage = errorData.error || errorData.message || errorData.detalles || errorMessage;
+                        } catch (parseError) {
+                            const errorText = await response.text();
+                            errorMessage = errorText || errorMessage;
+                        }
+                        this.showValidationMessage(`❌ ${errorMessage}`, 'error');
+                    }
+                } catch (error) {
+                    console.error('❌ Error al exportar Laravel:', error);
                     const errorMessage = error.message || error.toString() || 'Error desconocido';
                     this.showValidationMessage(`❌ Error al conectar con el servidor: ${errorMessage}`, 'error');
                 }
