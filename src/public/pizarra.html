@@ -3078,6 +3078,178 @@
             border-top-right-radius: 2px;
         }
 
+        /* ==================== AI TEAMMATE ROOM CHAT STYLES ==================== */
+        .chat-msg-row.msg-ai {
+            align-self: flex-start;
+            max-width: 92%;
+        }
+
+        .chat-msg-row.msg-ai .msg-avatar {
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: #ffffff;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+
+        .chat-msg-row.msg-ai .msg-bubble {
+            background: #f0f7ff;
+            color: #0f172a;
+            border: 1px solid #bfdbfe;
+            border-left: 3.5px solid #0d6efd;
+            border-top-left-radius: 2px;
+            box-shadow: 0 1px 3px rgba(13, 110, 253, 0.08);
+            font-size: 0.81rem;
+            line-height: 1.45;
+        }
+
+        .participant-role-tag.ai {
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-weight: 600;
+        }
+
+        .chat-ia-typing-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            margin: 4px 10px 6px 10px;
+            background: #f0f7ff;
+            border: 1px dashed #93c5fd;
+            border-radius: 8px;
+            animation: fadeInTyping 0.2s ease-out;
+            flex-shrink: 0;
+        }
+
+        .ia-typing-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #2563eb, #7c3aed);
+            color: white;
+            font-size: 0.65rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ia-typing-text {
+            font-size: 0.74rem;
+            color: #1e40af;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ia-typing-dots {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .ia-typing-dots span {
+            width: 4px;
+            height: 4px;
+            background-color: #2563eb;
+            border-radius: 50%;
+            animation: iaTypingBounce 1.4s infinite ease-in-out both;
+        }
+
+        .ia-typing-dots span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .ia-typing-dots span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .ia-typing-dots span:nth-child(3) {
+            animation-delay: 0s;
+        }
+
+        @keyframes iaTypingBounce {
+            0%, 80%, 100% {
+                transform: scale(0.6);
+                opacity: 0.4;
+            }
+            40% {
+                transform: scale(1.15);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInTyping {
+            from { opacity: 0; transform: translateY(3px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .room-chat-quick-mentions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2px 4px 2px;
+        }
+
+        .btn-mention-ia {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            color: #1d4ed8;
+            border-radius: 14px;
+            padding: 2px 8px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            outline: none;
+        }
+
+        .btn-mention-ia:hover {
+            background: #dbeafe;
+            border-color: #60a5fa;
+            transform: translateY(-1px);
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .btn-mention-ia .mention-hint {
+            font-size: 0.62rem;
+            color: #64748b;
+        }
+
+        .chat-code-block {
+            background: #1e293b;
+            color: #f8fafc;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.72rem;
+            overflow-x: auto;
+            margin: 6px 0;
+            white-space: pre;
+        }
+
+        .chat-inline-code {
+            background: #e2e8f0;
+            color: #0f172a;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.74rem;
+        }
+
+        .chat-list-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 5px;
+            margin: 2px 0;
+        }
+
+        .chat-list-bullet {
+            color: #2563eb;
+            font-weight: bold;
+        }
+
         .room-chat-input-container {
             padding: 0.75rem 0.9rem;
             background: #ffffff;
@@ -3431,8 +3603,25 @@
                     <div class="room-chat-messages" id="room-chat-messages">
                     </div>
 
+                    <!-- Indicador de Razonamiento / Tipeo de la IA -->
+                    <div id="chat-ia-typing" class="chat-ia-typing-container" style="display: none;">
+                        <span class="ia-typing-avatar"><i class="fas fa-robot"></i></span>
+                        <span class="ia-typing-text" id="chat-ia-typing-text">🤖 Arquitecto IA está pensando...</span>
+                        <div class="ia-typing-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+
                     <!-- Panel de Entrada de Mensaje con Enviar y Enter -->
                     <div class="room-chat-input-container">
+                        <div class="room-chat-quick-mentions">
+                            <button type="button" class="btn-mention-ia" id="btn-mention-ia" onclick="RoomChatManager.insertMention('@IA')" title="Mencionar al Arquitecto IA en el chat">
+                                <i class="fas fa-robot text-primary me-1"></i>
+                                <span class="fw-semibold">@IA</span>
+                                <span class="mention-hint ms-1">Preguntar</span>
+                            </button>
+                            <span class="mention-help-text text-muted" style="font-size: 0.65rem;">Menciona a @IA para consultar</span>
+                        </div>
                         <div class="room-chat-input-wrapper">
                             <textarea 
                                 class="room-chat-input" 
@@ -12532,6 +12721,14 @@
                 this.socket.on('xmlActualizado', (data) => {
                     console.log('🔄 Actualizando pizarra con nuevo estado...', data);
                     
+                    // Notificación toast si el cambio proviene del Arquitecto IA
+                    if (data && data.source === 'ai_teammate') {
+                        const msg = data.message || 'El Arquitecto IA actualizó el diagrama';
+                        if (typeof this.showNotification === 'function') {
+                            this.showNotification(`💡 ${msg}`, 'info', 4000);
+                        }
+                    }
+                    
                     if (data.nuevoEstado) {
                         // Efecto visual sutil en el canvas
                         const canvas = document.getElementById('canvas');
@@ -12999,13 +13196,25 @@
             
             createAvatarElement(usuario, isSelf) {
                 const avatar = document.createElement('div');
-                avatar.className = `user-avatar ${isSelf ? 'online' : ''}`;
-                avatar.style.backgroundColor = usuario.avatar.color;
-                avatar.textContent = usuario.avatar.initials;
+                const isAI = usuario && (usuario.isAI === true || usuario.id === 'ai_architect');
+                avatar.className = `user-avatar ${isSelf ? 'online' : ''} ${isAI ? 'ai-avatar' : ''}`;
+                
+                if (isAI) {
+                    avatar.style.background = 'linear-gradient(135deg, #2563eb, #7c3aed)';
+                    avatar.style.border = '2px solid #60a5fa';
+                    avatar.innerHTML = '<i class="fas fa-robot" style="font-size: 0.65rem;"></i>';
+                    avatar.title = `${usuario.name || 'Arquitecto IA'} (Colega IA)`;
+                    return avatar;
+                }
+                
+                const color = usuario.avatar?.color || '#3b82f6';
+                const initials = usuario.avatar?.initials || (usuario.name ? usuario.name.substring(0, 2).toUpperCase() : 'US');
+                avatar.style.backgroundColor = color;
+                avatar.textContent = initials;
                 const tipoUsuario = isSelf ? ' (tú)' : 
                     usuario.isInvited ? ' (invitado)' : 
                     usuario.isAuthenticated ? ' (colaborador)' : ' (anónimo)';
-                avatar.title = `${usuario.name}${tipoUsuario}`;
+                avatar.title = `${usuario.name || 'Usuario'}${tipoUsuario}`;
                 if (usuario.isInvited && !isSelf) {
                     avatar.style.border = '2px solid #f59e0b';
                     avatar.style.position = 'relative';
@@ -13263,10 +13472,16 @@
                 // Evitar duplicar listeners
                 this.socket.off('mensajeChatRecibido');
                 this.socket.off('historialChat');
+                this.socket.off('iaPensando');
 
                 // Escuchar mensajes en tiempo real
                 this.socket.on('mensajeChatRecibido', (mensaje) => {
                     this.handleIncomingMessage(mensaje);
+                });
+
+                // Escuchar indicador de razonamiento / tipeo del Arquitecto IA
+                this.socket.on('iaPensando', (data) => {
+                    this.handleIAPensando(data);
                 });
 
                 // Escuchar historial previo al conectarse
@@ -13284,6 +13499,41 @@
                         this.scrollToBottom();
                     }
                 });
+            }
+
+            static handleIAPensando(data) {
+                const typingEl = document.getElementById('chat-ia-typing');
+                if (!typingEl) return;
+
+                if (data && data.pensando) {
+                    const textEl = document.getElementById('chat-ia-typing-text');
+                    const paraUsuario = data.paraUsuario ? this.escapeHtml(data.paraUsuario) : 'el equipo';
+                    if (textEl) {
+                        textEl.innerHTML = `🤖 <strong>Arquitecto IA</strong> está pensando para ${paraUsuario}...`;
+                    }
+                    typingEl.style.display = 'flex';
+                    this.scrollToBottom();
+                } else {
+                    typingEl.style.display = 'none';
+                }
+            }
+
+            static insertMention(tag = '@IA') {
+                const input = document.getElementById('room-chat-input') || document.getElementById('chat-input');
+                if (!input) return;
+
+                const currentVal = input.value;
+                if (!currentVal.includes(tag)) {
+                    if (currentVal.trim() === '') {
+                        input.value = `${tag} `;
+                    } else {
+                        input.value = `${tag} ${currentVal.trimStart()}`;
+                    }
+                }
+                input.focus();
+                const len = input.value.length;
+                input.setSelectionRange(len, len);
+                this.autoResizeInput(input);
             }
 
             static switchPanelTab(tabName) {
@@ -13328,7 +13578,11 @@
             }
 
             static updateParticipants(usuariosMap, selfUser) {
-                const count = (usuariosMap ? usuariosMap.size : 0) + 1;
+                let count = (usuariosMap ? usuariosMap.size : 0) + 1;
+                const hasAI = usuariosMap && Array.from(usuariosMap.values()).some(u => u && (u.isAI === true || u.id === 'ai_architect'));
+                if (!hasAI) {
+                    count += 1;
+                }
                 
                 // Actualizar contadores
                 const badgeCount = document.getElementById('chat-participants-count');
@@ -13350,10 +13604,21 @@
                 // Añadir resto de usuarios
                 if (usuariosMap) {
                     usuariosMap.forEach(user => {
-                        if (user.id !== selfUser?.id) {
+                        if (user && user.id !== selfUser?.id) {
                             list.appendChild(this.createParticipantChip(user, false));
                         }
                     });
+                }
+
+                // Asegurar que el Arquitecto IA siempre esté visible en la lista como integrante virtual
+                if (!hasAI) {
+                    const aiUser = {
+                        id: 'ai_architect',
+                        name: 'Arquitecto IA',
+                        isAI: true,
+                        role: 'COLEGA'
+                    };
+                    list.appendChild(this.createParticipantChip(aiUser, false));
                 }
             }
 
@@ -13361,7 +13626,18 @@
                 const chip = document.createElement('div');
                 chip.className = 'participant-chip';
                 
-                const initials = user.avatar?.initials || user.name?.substring(0, 2).toUpperCase() || 'US';
+                const isAI = user && (user.isAI === true || user.id === 'ai_architect');
+                if (isAI) {
+                    chip.classList.add('participant-chip-ai');
+                    chip.innerHTML = `
+                        <div class="participant-avatar-micro ai-avatar" style="background: linear-gradient(135deg, #2563eb, #7c3aed);"><i class="fas fa-robot" style="font-size:0.6rem;"></i></div>
+                        <span class="text-truncate fw-semibold" style="max-width: 100px;" title="${user.name || 'Arquitecto IA'}">${user.name || 'Arquitecto IA'}</span>
+                        <span class="participant-role-tag ai"><i class="fas fa-robot me-1"></i>Colega IA</span>
+                    `;
+                    return chip;
+                }
+
+                const initials = user.avatar?.initials || (user.name ? user.name.substring(0, 2).toUpperCase() : 'US');
                 const color = user.avatar?.color || '#3b82f6';
                 const roleClass = user.isInvited ? 'guest' : 'host';
                 const roleText = isSelf ? 'Tú' : (user.isInvited ? 'Invitado' : 'Colaborador');
@@ -13435,35 +13711,94 @@
                 }
             }
 
+            static formatAIMessage(texto) {
+                if (!texto) return '';
+                // 1. Escapar HTML base para evitar XSS
+                let safe = this.escapeHtml(texto);
+
+                // 2. Bloques de código con triple backtick ```
+                safe = safe.replace(/```(?:[a-zA-Z0-9_\-]+)?\n?([\s\S]*?)```/g, (match, code) => {
+                    return `<pre class="chat-code-block"><code>${code.trim()}</code></pre>`;
+                });
+
+                // 3. Código inline `code`
+                safe = safe.replace(/`([^`\n]+)`/g, '<code class="chat-inline-code">$1</code>');
+
+                // 4. Negritas **texto**
+                safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+                // 5. Cursiva *texto*
+                safe = safe.replace(/(^|[^\*])\*([^\*\n]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
+
+                // 6. Listas bullet (- o *)
+                safe = safe.replace(/^[ \t]*[-\*][ \t]+(.+)$/gm, '<div class="chat-list-item"><span class="chat-list-bullet">•</span> <span>$1</span></div>');
+
+                // 7. Saltos de línea
+                safe = safe.replace(/\n/g, '<br>');
+
+                // Limpieza de saltos tras bloques estructurados
+                safe = safe.replace(/<\/pre><br>/g, '</pre>');
+                safe = safe.replace(/<\/div><br>/g, '</div>');
+
+                return safe;
+            }
+
             static renderMessage(mensaje, animate = true) {
                 const container = document.getElementById('room-chat-messages');
                 if (!container) return;
 
                 const currentUserId = this.usuarioInfo?.id || window.pizarraColaborativa?.usuarioInfo?.id;
-                const isSelf = mensaje.usuario?.id === currentUserId;
+                const isAI = mensaje.usuario && (mensaje.usuario.isAI === true || mensaje.usuario.id === 'ai_architect');
+                const isSelf = !isAI && mensaje.usuario?.id === currentUserId;
+
+                // Si llegó mensaje de la IA, ocultar el indicador de pensando
+                if (isAI) {
+                    const typingEl = document.getElementById('chat-ia-typing');
+                    if (typingEl) typingEl.style.display = 'none';
+                }
 
                 const row = document.createElement('div');
-                row.className = `chat-msg-row ${isSelf ? 'msg-self' : 'msg-other'}`;
+                let rowClass = 'chat-msg-row';
+                if (isAI) {
+                    rowClass += ' msg-ai';
+                } else if (isSelf) {
+                    rowClass += ' msg-self';
+                } else {
+                    rowClass += ' msg-other';
+                }
+                row.className = rowClass;
                 if (!animate) row.style.animation = 'none';
 
-                const initials = mensaje.usuario?.avatar?.initials || mensaje.usuario?.name?.substring(0, 2).toUpperCase() || 'US';
-                const color = mensaje.usuario?.avatar?.color || '#3b82f6';
-                const timeStr = new Date(mensaje.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                const senderName = isSelf ? 'Tú' : (mensaje.usuario?.name || 'Participante');
+                let avatarHtml = '';
+                let senderName = '';
+                let roleBadge = '';
 
-                const roleBadge = mensaje.usuario?.isInvited ? '<span class="participant-role-tag guest ms-1">Invitado</span>' : '';
+                if (isAI) {
+                    senderName = mensaje.usuario?.name || 'Arquitecto IA';
+                    avatarHtml = `<div class="msg-avatar ai-avatar" title="${this.escapeHtml(senderName)}"><i class="fas fa-robot"></i></div>`;
+                    roleBadge = `<span class="badge bg-primary rounded-pill me-1"><i class="fas fa-robot me-1"></i>Colega IA</span>`;
+                } else {
+                    const initials = mensaje.usuario?.avatar?.initials || (mensaje.usuario?.name ? mensaje.usuario.name.substring(0, 2).toUpperCase() : 'US');
+                    const color = mensaje.usuario?.avatar?.color || '#3b82f6';
+                    senderName = isSelf ? 'Tú' : (mensaje.usuario?.name || 'Participante');
+                    avatarHtml = `<div class="msg-avatar" style="background-color: ${color};" title="${this.escapeHtml(mensaje.usuario?.name || '')}">${initials}</div>`;
+                    if (mensaje.usuario?.isInvited) {
+                        roleBadge = `<span class="participant-role-tag guest ms-1">Invitado</span>`;
+                    }
+                }
+
+                const timeStr = new Date(mensaje.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const bodyContent = isAI ? this.formatAIMessage(mensaje.texto) : this.escapeHtml(mensaje.texto);
 
                 row.innerHTML = `
-                    <div class="msg-avatar" style="background-color: ${color};" title="${this.escapeHtml(mensaje.usuario?.name || '')}">
-                        ${initials}
-                    </div>
+                    ${avatarHtml}
                     <div class="msg-body">
                         <div class="msg-meta">
                             <span class="msg-sender-name">${this.escapeHtml(senderName)}</span>
                             ${roleBadge}
                             <span class="msg-time">${timeStr}</span>
                         </div>
-                        <div class="msg-bubble">${this.escapeHtml(mensaje.texto)}</div>
+                        <div class="msg-bubble">${bodyContent}</div>
                     </div>
                 `;
 
