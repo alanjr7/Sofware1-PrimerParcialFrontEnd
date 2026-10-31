@@ -13455,6 +13455,37 @@
             static unreadCount = 0;
             static isParticipantsOpen = false;
             static messages = [];
+            static getStorageKey() {
+                return `room_chat_messages_${this.salaId || "default"}`;
+            }
+
+            static loadPersistedMessages() {
+                try {
+                    const raw = sessionStorage.getItem(this.getStorageKey());
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            parsed.forEach(msg => {
+                                if (!this.messages.some(m => m.id === msg.id)) {
+                                    this.messages.push(msg);
+                                }
+                                this.renderMessage(msg, false);
+                            });
+                            this.scrollToBottom();
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Error recuperando mensajes de chat locales:", e);
+                }
+            }
+
+            static persistMessages() {
+                try {
+                    sessionStorage.setItem(this.getStorageKey(), JSON.stringify(this.messages.slice(-50)));
+                } catch (e) {
+                    console.warn("Error guardando mensajes de chat locales:", e);
+                }
+            }
 
             static init(socket, usuarioInfo, salaId) {
                 this.socket = socket;
@@ -13462,6 +13493,7 @@
                 this.salaId = salaId;
 
                 console.log('💬 Inicializando RoomChatManager para sala:', salaId);
+                this.loadPersistedMessages();
 
                 // Actualizar badge de sala
                 const roomBadge = document.getElementById('chat-room-badge');
@@ -13484,18 +13516,15 @@
                     this.handleIAPensando(data);
                 });
 
-                // Escuchar historial previo al conectarse
+                // Escuchar historial previo al conectarse (sin borrar mensajes existentes si el payload viene vacío)
                 this.socket.on('historialChat', (data) => {
-                    if (data && Array.isArray(data.mensajes)) {
-                        this.messages = [];
-                        const container = document.getElementById('room-chat-messages');
-                        if (container) {
-                            // Limpiar excepto el mensaje de bienvenida
-                            const welcome = container.querySelector('.welcome-msg');
-                            container.innerHTML = '';
-                            if (welcome) container.appendChild(welcome);
-                        }
-                        data.mensajes.forEach(msg => this.renderMessage(msg, false));
+                    if (data && Array.isArray(data.mensajes) && data.mensajes.length > 0) {
+                        data.mensajes.forEach(msg => {
+                            if (!this.messages.some(m => m.id === msg.id)) {
+                                this.messages.push(msg);
+                            }
+                            this.renderMessage(msg, false);
+                        });
                         this.scrollToBottom();
                     }
                 });
@@ -13701,6 +13730,12 @@
             }
 
             static handleIncomingMessage(mensaje) {
+                if (mensaje && mensaje.id) {
+                    if (!this.messages.some(m => m.id === mensaje.id)) {
+                        this.messages.push(mensaje);
+                        this.persistMessages();
+                    }
+                }
                 this.renderMessage(mensaje, true);
                 this.scrollToBottom();
 
