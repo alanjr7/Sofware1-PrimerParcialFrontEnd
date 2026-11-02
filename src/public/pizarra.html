@@ -6151,6 +6151,12 @@
                     }
                     if (connectionsData && Array.isArray(connectionsData)) {
                         connectionsData.forEach(conn => {
+                            if (!conn.source && (conn.sourceId || conn.from || conn.origen)) {
+                                conn.source = conn.sourceId || conn.from || conn.origen;
+                            }
+                            if (!conn.target && (conn.targetId || conn.to || conn.destino)) {
+                                conn.target = conn.targetId || conn.to || conn.destino;
+                            }
                             if (!document.getElementById(conn.source)) {
                                 const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && el.name.toLowerCase() === String(conn.source).toLowerCase());
                                 if (matched) conn.source = matched.id;
@@ -11954,6 +11960,12 @@
                         if (connectionsData && Array.isArray(connectionsData)) {
                             console.log('🔗 Cargando conexiones:', connectionsData.length, 'conexiones');
                             connectionsData.forEach(conn => {
+                            if (!conn.source && (conn.sourceId || conn.from || conn.origen)) {
+                                conn.source = conn.sourceId || conn.from || conn.origen;
+                            }
+                            if (!conn.target && (conn.targetId || conn.to || conn.destino)) {
+                                conn.target = conn.targetId || conn.to || conn.destino;
+                            }
                                 if (!document.getElementById(conn.source)) {
                                     const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && el.name.toLowerCase() === String(conn.source).toLowerCase());
                                     if (matched) conn.source = matched.id;
@@ -12863,7 +12875,27 @@
                         }
                     }
                     let conexionesCargadas = 0;
-                    if (parsedState && parsedState.connections && Array.isArray(parsedState.connections)) {
+                    let connsData = (parsedState && (parsedState.connections || parsedState.relationships || parsedState.data?.connections || parsedState.data?.relationships)) || null;
+                    if (connsData && Array.isArray(connsData)) {
+                        connsData.forEach(conn => {
+                            if (!conn.source && (conn.sourceId || conn.from || conn.origen)) {
+                                conn.source = conn.sourceId || conn.from || conn.origen;
+                            }
+                            if (!conn.target && (conn.targetId || conn.to || conn.destino)) {
+                                conn.target = conn.targetId || conn.to || conn.destino;
+                            }
+                            if (window.DiagramManager && window.DiagramManager.elements) {
+                                if (!document.getElementById(conn.source)) {
+                                    const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && String(el.name).toLowerCase() === String(conn.source).toLowerCase());
+                                    if (matched) conn.source = matched.id;
+                                }
+                                if (!document.getElementById(conn.target)) {
+                                    const matched = Array.from(DiagramManager.elements.values()).find(el => el.name && String(el.name).toLowerCase() === String(conn.target).toLowerCase());
+                                    if (matched) conn.target = matched.id;
+                                }
+                            }
+                        });
+                        parsedState.connections = connsData;
                         if (window.ConnectionManager) {
                             ConnectionManager.connections = parsedState.connections;
                             ConnectionManager.updateConnections();
