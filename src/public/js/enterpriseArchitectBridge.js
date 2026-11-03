@@ -11,6 +11,8 @@
  * - Extensiones propietarias:
  *   - <xmi:Extension extender="Enterprise Architect" extenderID="6.5">
  *   - <elements> con definiciones de paquete y clases asociadas a model package.
+ *   - <connectors><connector> para extracción e importación completa y confiable
+ *     de todas las relaciones (Asociación, Agregación, Composición, Herencia, etc.)
  *   - <diagrams><diagram> con owner="EAPK_..." para que el diagrama se cree
  *     y aparezca visualmente dentro del árbol del paquete en el Project Browser.
  *   - Geometría Left, Top, Right, Bottom para posicionar los elementos.
@@ -106,7 +108,6 @@
             return guidCache.get(strId);
         }
 
-        // Si ya cumple exactamente el formato de Enterprise Architect EAID_XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX
         const eaGuidRegex = /^(EAID_|EAPK_)[0-9A-Fa-f]{8}_[0-9A-Fa-f]{4}_[0-9A-Fa-f]{4}_[0-9A-Fa-f]{4}_[0-9A-Fa-f]{12}$/;
         if (eaGuidRegex.test(strId)) {
             guidCache.set(strId, strId);
@@ -168,6 +169,35 @@
                node.getAttribute('xmi.idref') ||
                node.getAttribute('idref') ||
                null;
+    }
+
+    function getEndClassifierId(endNode) {
+        if (!endNode) return null;
+        let t = endNode.getAttribute('type');
+        if (t) return t;
+
+        const typeNodes = endNode.getElementsByTagName('type') || [];
+        if (typeNodes.length > 0) {
+            const tn = typeNodes[0];
+            t = tn.getAttribute('xmi:idref') || tn.getAttribute('idref') || tn.getAttribute('href') || tn.getAttribute('name');
+            if (t) {
+                if (t.includes('#')) t = t.split('#')[1];
+                return t;
+            }
+        }
+        return endNode.getAttribute('xmi:idref') || endNode.getAttribute('idref') || null;
+    }
+
+    function extractMultiplicity(endNode) {
+        if (!endNode) return '';
+        const low = endNode.getElementsByTagName('lowerValue') || [];
+        const up = endNode.getElementsByTagName('upperValue') || [];
+        if (low.length > 0 || up.length > 0) {
+            const lVal = low.length > 0 ? (low[0].getAttribute('value') || '0') : '1';
+            const uVal = up.length > 0 ? (up[0].getAttribute('value') || '1') : '1';
+            return lVal === uVal ? lVal : `${lVal}..${uVal}`;
+        }
+        return endNode.getAttribute('multiplicity') || '';
     }
 
     /**
@@ -618,7 +648,7 @@
                 <target xmi:idref="${escapeXML(targetEAID)}">
                     <role multiplicity="${escapeXML(conn.targetMultiplicity || '')}"/>
                 </target>
-                <properties ea_type="${eaType}" direction="Unspecified"/>
+                <properties ea_type="${eaType}" name="${escapeXML(label)}" direction="Unspecified"/>
             </connector>`;
                 }
             });
@@ -860,8 +890,10 @@
 
                 elements.push(umlClass);
                 idToElementMap.set(rawId, umlClass);
+                idToElementMap.set(fromEAID(rawId), umlClass);
                 idToElementMap.set(toEAID(rawId, 'EAID_'), umlClass);
                 idToElementMap.set(name, umlClass);
+                idToElementMap.set(name.toLowerCase(), umlClass);
             });
 
             // 3. Extraer Enumeraciones (<packagedElement xmi:type="uml:Enumeration"> o <Enumeration>)
@@ -883,14 +915,20 @@
                         if (lName) values.push(lName);
                     });
 
-                    elements.push({
+                    const enumElem = {
                         id: rawId,
                         type: 'enum',
                         name: name,
                         values: values,
                         x: x,
                         y: y
-                    });
+                    };
+                    elements.push(enumElem);
+                    idToElementMap.set(rawId, enumElem);
+                    idToElementMap.set(fromEAID(rawId), enumElem);
+                    idToElementMap.set(toEAID(rawId, 'EAID_'), enumElem);
+                    idToElementMap.set(name, enumElem);
+                    idToElementMap.set(name.toLowerCase(), enumElem);
                 }
             }
 
@@ -923,7 +961,94 @@
                 }
             }
 
-            // 5. Extraer Asociaciones, Agregaciones, Composiciones (<packagedElement xmi:type="uml:Association">)
+            // 5.a Extraer Conectores desde la extensión nativa de Enterprise Architect (<connectors><connector>)
+            // Este es el repositorio más completo y confiable de relaciones de Sparx Systems EA
+            const connectorNodes = queryUniqueTags(doc, ['connector']);
+            connectorNodes.forEach(cNode => {
+                const connId = getNodeId(cNode) || cNode.getAttribute('xmi:idref') || `conn_${Date.now()}_${connections.length}`;
+
+                const sourceNodes = queryUniqueTags(cNode, ['source']);
+                const targetNodes = queryUniqueTags(cNode, ['target']);
+
+                if (sourceNodes.length === 0 || targetNodes.length === 0) return;
+
+                const sNode = sourceNodes[0];
+                const tNode = targetNodes[0];
+
+                const sourceId = sNode.getAttribute('xmi:idref') || sNode.getAttribute('idref') || getNodeId(sNode);
+                const targetId = tNode.getAttribute('xmi:idref') || tNode.getAttribute('idref') || getNodeId(tNode);
+
+                if (!sourceId || !targetId) return;
+
+                // Propiedades del conector
+                const propNodes = queryUniqueTags(cNode, ['properties']);
+                const eaType = propNodes.length > 0 
+                    ? (propNodes[0].getAttribute('ea_type') || propNodes[0].getAttribute('type') || '')
+                    : (cNode.getAttribute('ea_type') || '');
+                const label = (propNodes.length > 0 ? propNodes[0].getAttribute('name') : null) || cNode.getAttribute('name') || '';
+
+                // Determinar tipo de relación
+                let relType = 'association';
+                const eaTypeLower = eaType.toLowerCase();
+
+                const sTypeNodes = queryUniqueTags(sNode, ['type']);
+                const tTypeNodes = queryUniqueTags(tNode, ['type']);
+                const sAgg = sTypeNodes.length > 0 ? (sTypeNodes[0].getAttribute('aggregation') || 'none') : 'none';
+                const tAgg = tTypeNodes.length > 0 ? (tTypeNodes[0].getAttribute('aggregation') || 'none') : 'none';
+
+                if (eaTypeLower === 'generalization' || eaTypeLower === 'inheritance') {
+                    relType = 'inheritance';
+                } else if (eaTypeLower === 'composition' || sAgg === 'composite' || tAgg === 'composite') {
+                    relType = 'composition';
+                } else if (eaTypeLower === 'aggregation' || sAgg === 'shared' || tAgg === 'shared') {
+                    relType = 'aggregation';
+                } else if (eaTypeLower === 'dependency') {
+                    relType = 'dependency';
+                } else if (eaTypeLower === 'realisation' || eaTypeLower === 'realization' || eaTypeLower === 'implementation') {
+                    relType = 'implementation';
+                } else {
+                    relType = 'association';
+                }
+
+                // Multiplicidades
+                let sMult = '';
+                const sRoleNodes = queryUniqueTags(sNode, ['role']);
+                if (sRoleNodes.length > 0) {
+                    sMult = sRoleNodes[0].getAttribute('multiplicity') || '';
+                }
+
+                let tMult = '';
+                const tRoleNodes = queryUniqueTags(tNode, ['role']);
+                if (tRoleNodes.length > 0) {
+                    tMult = tRoleNodes[0].getAttribute('multiplicity') || '';
+                }
+
+                if (!sMult || !tMult) {
+                    const labelNodes = queryUniqueTags(cNode, ['labels']);
+                    if (labelNodes.length > 0) {
+                        if (!sMult) sMult = labelNodes[0].getAttribute('lb') || '';
+                        if (!tMult) tMult = labelNodes[0].getAttribute('rb') || '';
+                    }
+                }
+
+                const connKey = `${sourceId}->${targetId}:${relType}`;
+                const revKey = `${targetId}->${sourceId}:${relType}`;
+
+                if (!connectionSet.has(connKey) && !connectionSet.has(revKey)) {
+                    connectionSet.add(connKey);
+                    connections.push({
+                        id: connId,
+                        source: sourceId,
+                        target: targetId,
+                        type: relType,
+                        sourceMultiplicity: sMult,
+                        targetMultiplicity: tMult,
+                        label: label
+                    });
+                }
+            });
+
+            // 5.b Extraer Asociaciones desde packagedElement xmi:type="uml:Association"
             for (let i = 0; i < allPackaged.length; i++) {
                 const p = allPackaged[i];
                 const type = p.getAttribute('xmi:type') || p.getAttribute('type');
@@ -934,16 +1059,28 @@
 
                     const ends = queryUniqueTags(p, ['ownedEnd', 'AssociationEnd']);
 
+                    let sourceId = null;
+                    let targetId = null;
+                    let agg1 = 'none';
+                    let agg2 = 'none';
+                    let mult1 = '';
+                    let mult2 = '';
+
                     if (ends.length >= 2) {
                         const end1 = ends[0];
                         const end2 = ends[1];
 
-                        const sourceId = end1.getAttribute('type');
-                        const targetId = end2.getAttribute('type');
+                        sourceId = getEndClassifierId(end1);
+                        targetId = getEndClassifierId(end2);
 
-                        const agg1 = end1.getAttribute('aggregation') || 'none';
-                        const agg2 = end2.getAttribute('aggregation') || 'none';
+                        agg1 = end1.getAttribute('aggregation') || 'none';
+                        agg2 = end2.getAttribute('aggregation') || 'none';
 
+                        mult1 = extractMultiplicity(end1);
+                        mult2 = extractMultiplicity(end2);
+                    }
+
+                    if (sourceId && targetId) {
                         let relType = 'association';
                         if (agg1 === 'composite' || agg2 === 'composite') {
                             relType = 'composition';
@@ -951,28 +1088,9 @@
                             relType = 'aggregation';
                         }
 
-                        // Cardinalidad end1
-                        let mult1 = '';
-                        const low1 = end1.getElementsByTagName('lowerValue') || [];
-                        const up1 = end1.getElementsByTagName('upperValue') || [];
-                        if (low1.length > 0 || up1.length > 0) {
-                            const lVal = low1.length > 0 ? (low1[0].getAttribute('value') || '0') : '1';
-                            const uVal = up1.length > 0 ? (up1[0].getAttribute('value') || '1') : '1';
-                            mult1 = lVal === uVal ? lVal : `${lVal}..${uVal}`;
-                        }
-
-                        // Cardinalidad end2
-                        let mult2 = '';
-                        const low2 = end2.getElementsByTagName('lowerValue') || [];
-                        const up2 = end2.getElementsByTagName('upperValue') || [];
-                        if (low2.length > 0 || up2.length > 0) {
-                            const lVal = low2.length > 0 ? (low2[0].getAttribute('value') || '0') : '1';
-                            const uVal = up2.length > 0 ? (up2[0].getAttribute('value') || '1') : '1';
-                            mult2 = lVal === uVal ? lVal : `${lVal}..${uVal}`;
-                        }
-
                         const connKey = `${sourceId}->${targetId}:${relType}`;
-                        if (!connectionSet.has(connKey)) {
+                        const revKey = `${targetId}->${sourceId}:${relType}`;
+                        if (!connectionSet.has(connKey) && !connectionSet.has(revKey)) {
                             connectionSet.add(connKey);
                             connections.push({
                                 id: connId,
@@ -1022,15 +1140,30 @@
                 }
             }
 
+            function resolveElementId(ref) {
+                if (!ref) return null;
+                const cleanRef = String(ref).trim();
+                const el = idToElementMap.get(cleanRef) ||
+                           idToElementMap.get(cleanRef.toLowerCase()) ||
+                           idToElementMap.get(toEAID(cleanRef, 'EAID_')) ||
+                           idToElementMap.get(fromEAID(cleanRef));
+                if (el) return el.id;
+
+                if (cleanRef.includes('#')) {
+                    const hash = cleanRef.split('#')[1];
+                    const elHash = idToElementMap.get(hash) || idToElementMap.get(fromEAID(hash));
+                    if (elHash) return elHash.id;
+                }
+                return cleanRef;
+            }
+
             // 6. Normalizar y resolver IDs de conexiones que referencien nombres o EAID
             connections.forEach(conn => {
                 if (conn.source) {
-                    const el = idToElementMap.get(conn.source);
-                    if (el) conn.source = el.id;
+                    conn.source = resolveElementId(conn.source);
                 }
                 if (conn.target) {
-                    const el = idToElementMap.get(conn.target);
-                    if (el) conn.target = el.id;
+                    conn.target = resolveElementId(conn.target);
                 }
             });
 

@@ -337,3 +337,77 @@ test('EnterpriseArchitectBridge - 5. Soporta formato legacy XMI 1.1 de Enterpris
     assert.equal(persona.attributes[0].name, 'nombre');
     assert.equal(persona.methods[0].name, 'caminar');
 });
+
+
+test('EnterpriseArchitectBridge - 6. Extrae todas las relaciones desde <connectors> de Enterprise Architect', () => {
+    const eaXmiWithConnectors = `<?xml version="1.0" encoding="UTF-8"?>
+<xmi:XMI xmi:version="2.1" xmlns:uml="http://schema.omg.org/spec/UML/2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1">
+    <uml:Model xmi:type="uml:Model" name="EA_Model">
+        <packagedElement xmi:type="uml:Package" xmi:id="EAPK_1" name="DiagramaClases">
+            <packagedElement xmi:type="uml:Class" xmi:id="EAID_CLIENTE" name="Cliente"/>
+            <packagedElement xmi:type="uml:Class" xmi:id="EAID_VENTA" name="Venta"/>
+            <packagedElement xmi:type="uml:Class" xmi:id="EAID_PRODUCTO" name="Producto"/>
+            <packagedElement xmi:type="uml:Class" xmi:id="EAID_VENTAPROD" name="VentaProducto"/>
+        </packagedElement>
+    </uml:Model>
+    <xmi:Extension extender="Enterprise Architect" extenderID="6.5">
+        <connectors>
+            <connector xmi:idref="EAID_CONN_1">
+                <source xmi:idref="EAID_CLIENTE">
+                    <role multiplicity="1"/>
+                    <type aggregation="none"/>
+                </source>
+                <target xmi:idref="EAID_VENTA">
+                    <role multiplicity="0..*"/>
+                    <type aggregation="none"/>
+                </target>
+                <properties ea_type="Association" name="realiza" direction="Unspecified"/>
+            </connector>
+            <connector xmi:idref="EAID_CONN_2">
+                <source xmi:idref="EAID_VENTA">
+                    <role multiplicity="1"/>
+                    <type aggregation="composite"/>
+                </source>
+                <target xmi:idref="EAID_VENTAPROD">
+                    <role multiplicity="1..*"/>
+                    <type aggregation="none"/>
+                </target>
+                <properties ea_type="Composition" name="detalla" direction="Unspecified"/>
+            </connector>
+            <connector xmi:idref="EAID_CONN_3">
+                <source xmi:idref="EAID_PRODUCTO">
+                    <role multiplicity="1"/>
+                    <type aggregation="shared"/>
+                </source>
+                <target xmi:idref="EAID_VENTAPROD">
+                    <role multiplicity="0..*"/>
+                    <type aggregation="none"/>
+                </target>
+                <properties ea_type="Aggregation" name="incluye" direction="Unspecified"/>
+            </connector>
+        </connectors>
+    </xmi:Extension>
+</xmi:XMI>`;
+
+    const parsed = EnterpriseArchitectBridge.xmiToDiagram(eaXmiWithConnectors);
+    assert.equal(parsed.elements.length, 4, 'Deben importarse las 4 clases');
+    assert.equal(parsed.connections.length, 3, 'Deben importarse las 3 relaciones desde <connectors>');
+
+    const conn1 = parsed.connections.find(c => c.label === 'realiza');
+    assert.ok(conn1, 'Debe existir la relación realiza');
+    assert.equal(conn1.source, 'EAID_CLIENTE');
+    assert.equal(conn1.target, 'EAID_VENTA');
+    assert.equal(conn1.type, 'association');
+    assert.equal(conn1.sourceMultiplicity, '1');
+    assert.equal(conn1.targetMultiplicity, '0..*');
+
+    const conn2 = parsed.connections.find(c => c.label === 'detalla');
+    assert.ok(conn2, 'Debe existir la composición detalla');
+    assert.equal(conn2.type, 'composition');
+    assert.equal(conn2.sourceMultiplicity, '1');
+    assert.equal(conn2.targetMultiplicity, '1..*');
+
+    const conn3 = parsed.connections.find(c => c.label === 'incluye');
+    assert.ok(conn3, 'Debe existir la agregación incluye');
+    assert.equal(conn3.type, 'aggregation');
+});
