@@ -4,12 +4,16 @@
  * Módulo de integración bidireccional entre la Pizarra Colaborativa y
  * Sparx Systems Enterprise Architect (EA).
  * 
- * Soporta:
- * - Exportación a OMG XMI 2.1 (UML 2.1) con extensiones nativas de Enterprise Architect:
- *   (packagedElement, ownedAttribute, ownedOperation, generalization, ownedEnd,
- *    xmi:Extension extender="Enterprise Architect", diagram geometry Left/Top/Right/Bottom).
- * - Importación desde XMI 2.1 / XMI 1.1 / UML 1.3-2.5 exportados por Enterprise Architect.
- * - Round-trip bidireccional (Nuestra App <--> Enterprise Architect).
+ * Cumple con los requerimientos específicos de Sparx EA:
+ * - Identificadores GUID en formato estándar EA:
+ *   - Paquetes: EAPK_XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX (32 hex)
+ *   - Elementos y Diagramas: EAID_XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX (32 hex)
+ * - Extensiones propietarias:
+ *   - <xmi:Extension extender="Enterprise Architect" extenderID="6.5">
+ *   - <elements> con definiciones de paquete y clases asociadas a model package.
+ *   - <diagrams><diagram> con owner="EAPK_..." para que el diagrama se cree
+ *     y aparezca visualmente dentro del árbol del paquete en el Project Browser.
+ *   - Geometría Left, Top, Right, Bottom para posicionar los elementos.
  */
 
 (function (global) {
@@ -61,18 +65,64 @@
             .replace(/&amp;/g, '&');
     }
 
-    function toEAID(id) {
-        if (!id) return 'EAID_' + Math.random().toString(36).substring(2, 10).toUpperCase();
+    /**
+     * Genera un GUID hexadecimal de 32 caracteres con formato estándar 8_4_4_4_12
+     * compatible con la base de datos interna y motor XMI de Enterprise Architect.
+     */
+    function generateEAGUID(seed) {
+        let d = Date.now();
+        let d2 = (typeof performance !== 'undefined' && performance.now && (performance.now() * 1000)) || 0;
+
+        if (seed && typeof seed === 'string') {
+            const hexOnly = seed.replace(/[^a-fA-F0-9]/g, '');
+            if (hexOnly.length >= 32) {
+                const h = hexOnly.substring(0, 32).toUpperCase();
+                return `${h.substring(0, 8)}_${h.substring(8, 12)}_${h.substring(12, 16)}_${h.substring(16, 20)}_${h.substring(20, 32)}`;
+            }
+        }
+
+        return 'xxxxxxxx_xxxx_4xxx_yxxx_xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            let r = Math.random() * 16;
+            if (d > 0) {
+                r = (d + r) % 16 | 0;
+                d = Math.floor(d / 16);
+            } else {
+                r = (d2 + r) % 16 | 0;
+                d2 = Math.floor(d2 / 16);
+            }
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16).toUpperCase();
+        });
+    }
+
+    const guidCache = new Map();
+
+    /**
+     * Obtiene o genera un GUID con prefijo EAID_ o EAPK_
+     */
+    function toEAID(id, prefix = 'EAID_') {
+        if (!id) return prefix + generateEAGUID();
         const strId = String(id);
-        if (strId.startsWith('EAID_')) return strId;
-        const clean = strId.replace(/[^a-zA-Z0-9_]/g, '_');
-        return 'EAID_' + clean;
+        if (guidCache.has(strId)) {
+            return guidCache.get(strId);
+        }
+
+        // Si ya cumple exactamente el formato de Enterprise Architect EAID_XXXXXXXX_XXXX_XXXX_XXXX_XXXXXXXXXXXX
+        const eaGuidRegex = /^(EAID_|EAPK_)[0-9A-Fa-f]{8}_[0-9A-Fa-f]{4}_[0-9A-Fa-f]{4}_[0-9A-Fa-f]{4}_[0-9A-Fa-f]{12}$/;
+        if (eaGuidRegex.test(strId)) {
+            guidCache.set(strId, strId);
+            return strId;
+        }
+
+        const newGuid = prefix + generateEAGUID(strId);
+        guidCache.set(strId, newGuid);
+        guidCache.set(newGuid, newGuid);
+        return newGuid;
     }
 
     function fromEAID(eaId) {
         if (!eaId) return '';
         const str = String(eaId);
-        if (str.startsWith('EAID_')) {
+        if (str.startsWith('EAID_') || str.startsWith('EAPK_')) {
             return str.substring(5);
         }
         return str;
@@ -158,7 +208,6 @@
             }
         }
 
-        // Si no hay DOM nativo o falló, usar nuestro parser de árbol robusto
         return buildXMLTree(xmlText);
     }
 
@@ -216,7 +265,6 @@
         };
 
         const stack = [root];
-        // Remover comentarios y encabezados XML <?...?> <!--...-->
         let clean = xmlText.replace(/<!--[\s\S]*?-->/g, '').replace(/<\?[\s\S]*?\?>/g, '');
 
         const tokenRegex = /<(\/)?([a-zA-Z0-9_:.-]+)([^>]*?)(\/?)>|([^<]+)/g;
@@ -241,7 +289,6 @@
                     stack.pop();
                 }
             } else {
-                // Parsear atributos
                 const attrs = {};
                 if (rawAttrs) {
                     const attrRegex = /([a-zA-Z0-9_:.-]+)=["']([^"']*)["']/g;
@@ -326,22 +373,30 @@
             const now = new Date();
             const dateStr = now.toISOString().replace('T', ' ').substring(0, 19);
 
-            const packageEAID = 'EAPK_PACKAGE_' + Date.now();
-            const diagramEAID = 'EAID_DIAG_' + Date.now();
+            guidCache.clear();
+            const packageEAID = toEAID('pkg_' + diagramName, 'EAPK_');
+            const diagramEAID = toEAID('diag_' + diagramName, 'EAID_');
 
             let classesXml = '';
             let associationsXml = '';
-            let eaElementsXml = '';
             let eaConnectorsXml = '';
             let eaDiagramElementsXml = '';
 
+            // 1. Inicializar metadatos de Enterprise Architect para el paquete contenedor
+            let eaElementsXml = `
+            <element xmi:idref="${escapeXML(packageEAID)}" xmi:type="uml:Package" name="${escapeXML(diagramName)}" scope="public">
+                <model package2="${escapeXML(packageEAID)}" package="${escapeXML(packageEAID)}" tpos="0" ea_localid="1" ea_eleType="package"/>
+                <properties isSpecification="false" sType="Package" nType="0" scope="public"/>
+                <project author="${escapeXML(author)}" version="1.0" phase="1.0" created="${dateStr}" modified="${dateStr}" complexity="1" status="Proposed"/>
+            </element>`;
+
             let seqNo = 1;
 
-            // 1. Procesar Elementos (Clases, Enumeraciones, Paquetes, Notas)
+            // 2. Procesar Elementos (Clases, Enumeraciones, Paquetes, Notas)
             elements.forEach((elem, index) => {
                 if (!elem) return;
                 const rawId = elem.id || `elem_${index + 1}`;
-                const eaId = toEAID(rawId);
+                const eaId = toEAID(rawId, 'EAID_');
                 const name = elem.name || rawId;
                 const elemType = elem.type || 'class';
 
@@ -356,8 +411,10 @@
 
                 if (elemType === 'class') {
                     eaElementsXml += `
-            <element xmi:idref="${escapeXML(eaId)}" name="${escapeXML(name)}" type="Class">
+            <element xmi:idref="${escapeXML(eaId)}" xmi:type="uml:Class" name="${escapeXML(name)}" scope="${escapeXML(elem.visibility || 'public')}">
+                <model package="${escapeXML(packageEAID)}" tpos="0" ea_localid="${index + 2}" ea_eleType="element"/>
                 <properties isSpecification="false" sType="Class" nType="0" scope="${escapeXML(elem.visibility || 'public')}" stereotype="${escapeXML(elem.stereotype || '')}"/>
+                <project author="${escapeXML(author)}" version="1.0" phase="1.0" created="${dateStr}" modified="${dateStr}" complexity="1" status="Proposed"/>
             </element>`;
 
                     // Atributos de la clase
@@ -369,7 +426,7 @@
                             const attrType = attr.type || 'String';
                             const umlType = mapToUMLType(attrType);
                             const attrVis = attr.visibility || 'private';
-                            const attrEAID = `${eaId}_ATTR_${attrIdx + 1}`;
+                            const attrEAID = toEAID(`${eaId}_ATTR_${attrIdx + 1}`, 'EAID_');
 
                             attributesXml += `
                 <ownedAttribute xmi:type="uml:Property" xmi:id="${escapeXML(attrEAID)}" name="${escapeXML(attrName)}" visibility="${escapeXML(attrVis)}">
@@ -386,7 +443,7 @@
                             const opName = op.name || `method${opIdx + 1}`;
                             const opVis = op.visibility || 'public';
                             const isStatic = op.isStatic ? 'true' : 'false';
-                            const opEAID = `${eaId}_OP_${opIdx + 1}`;
+                            const opEAID = toEAID(`${eaId}_OP_${opIdx + 1}`, 'EAID_');
 
                             let paramsXml = '';
                             if (op.parameters && Array.isArray(op.parameters)) {
@@ -394,16 +451,18 @@
                                     if (!param) return;
                                     const pName = param.name || `param${pIdx + 1}`;
                                     const pType = param.type || 'String';
+                                    const paramEAID = toEAID(`${opEAID}_P${pIdx + 1}`, 'EAID_');
                                     paramsXml += `
-                    <ownedParameter xmi:type="uml:Parameter" xmi:id="${escapeXML(opEAID)}_P${pIdx + 1}" name="${escapeXML(pName)}" direction="in">
+                    <ownedParameter xmi:type="uml:Parameter" xmi:id="${escapeXML(paramEAID)}" name="${escapeXML(pName)}" direction="in">
                         <type xmi:type="uml:PrimitiveType" href="http://schema.omg.org/spec/UML/2.1/uml.xml#${escapeXML(mapToUMLType(pType))}" name="${escapeXML(pType)}"/>
                     </ownedParameter>`;
                                 });
                             }
 
                             if (op.returnType && op.returnType !== 'void') {
+                                const retEAID = toEAID(`${opEAID}_RET`, 'EAID_');
                                 paramsXml += `
-                    <ownedParameter xmi:type="uml:Parameter" xmi:id="${escapeXML(opEAID)}_RET" name="return" direction="return">
+                    <ownedParameter xmi:type="uml:Parameter" xmi:id="${escapeXML(retEAID)}" name="return" direction="return">
                         <type xmi:type="uml:PrimitiveType" href="http://schema.omg.org/spec/UML/2.1/uml.xml#${escapeXML(mapToUMLType(op.returnType))}" name="${escapeXML(op.returnType)}"/>
                     </ownedParameter>`;
                             }
@@ -421,8 +480,8 @@
                         if (conn.type === 'inheritance' && (conn.source === rawId || conn.source === eaId || conn.source === name)) {
                             const targetTarget = conn.target;
                             const targetElem = elements.find(el => el.id === targetTarget || el.name === targetTarget);
-                            const targetEAID = toEAID(targetElem ? targetElem.id : targetTarget);
-                            const genEAID = `EAID_GEN_${conn.id || Math.random().toString(36).substring(2, 9)}`;
+                            const targetEAID = toEAID(targetElem ? targetElem.id : targetTarget, 'EAID_');
+                            const genEAID = toEAID(`gen_${conn.id || rawId}_${targetTarget}`, 'EAID_');
 
                             generalizationsXml += `
                 <generalization xmi:type="uml:Generalization" xmi:id="${escapeXML(genEAID)}" general="${escapeXML(targetEAID)}"/>`;
@@ -445,16 +504,19 @@
 
                 } else if (elemType === 'enum') {
                     eaElementsXml += `
-            <element xmi:idref="${escapeXML(eaId)}" name="${escapeXML(name)}" type="Enumeration">
+            <element xmi:idref="${escapeXML(eaId)}" xmi:type="uml:Enumeration" name="${escapeXML(name)}" scope="public">
+                <model package="${escapeXML(packageEAID)}" tpos="0" ea_localid="${index + 2}" ea_eleType="element"/>
                 <properties isSpecification="false" sType="Enumeration" nType="0" scope="public"/>
+                <project author="${escapeXML(author)}" version="1.0" phase="1.0" created="${dateStr}" modified="${dateStr}" complexity="1" status="Proposed"/>
             </element>`;
 
                     let literalsXml = '';
                     if (elem.values && Array.isArray(elem.values)) {
                         elem.values.forEach((val, vIdx) => {
                             const litName = typeof val === 'object' ? (val.name || val.value) : val;
+                            const litEAID = toEAID(`${eaId}_LIT_${vIdx + 1}`, 'EAID_');
                             literalsXml += `
-                <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="${escapeXML(eaId)}_LIT_${vIdx + 1}" name="${escapeXML(litName)}"/>`;
+                <ownedLiteral xmi:type="uml:EnumerationLiteral" xmi:id="${escapeXML(litEAID)}" name="${escapeXML(litName)}"/>`;
                         });
                     }
 
@@ -467,27 +529,33 @@
                     classesXml += `
             <packagedElement xmi:type="uml:Package" xmi:id="${escapeXML(eaId)}" name="${escapeXML(name)}"/>`;
                     eaElementsXml += `
-            <element xmi:idref="${escapeXML(eaId)}" name="${escapeXML(name)}" type="Package"/>`;
+            <element xmi:idref="${escapeXML(eaId)}" xmi:type="uml:Package" name="${escapeXML(name)}" scope="public">
+                <model package="${escapeXML(packageEAID)}" tpos="0" ea_localid="${index + 2}" ea_eleType="package"/>
+                <properties isSpecification="false" sType="Package" nType="0" scope="public"/>
+            </element>`;
                 } else if (elemType === 'note') {
                     const noteText = elem.text || '';
                     classesXml += `
             <packagedElement xmi:type="uml:Comment" xmi:id="${escapeXML(eaId)}" body="${escapeXML(noteText)}"/>`;
                     eaElementsXml += `
-            <element xmi:idref="${escapeXML(eaId)}" name="Nota" type="Note"/>`;
+            <element xmi:idref="${escapeXML(eaId)}" xmi:type="uml:Comment" name="Nota" scope="public">
+                <model package="${escapeXML(packageEAID)}" tpos="0" ea_localid="${index + 2}" ea_eleType="element"/>
+                <properties isSpecification="false" sType="Note" nType="0" scope="public"/>
+            </element>`;
                 }
             });
 
-            // 2. Procesar Conexiones (Asociaciones, Agregaciones, Composiciones, Dependencias)
+            // 3. Procesar Conexiones (Asociaciones, Agregaciones, Composiciones, Dependencias)
             connections.forEach((conn, index) => {
-                if (!conn || conn.type === 'inheritance') return; // Generalizaciones ya están en las clases
+                if (!conn || conn.type === 'inheritance') return;
 
                 const connId = conn.id || `conn_${index + 1}`;
-                const connEAID = toEAID(connId);
+                const connEAID = toEAID(connId, 'EAID_');
                 const sourceElem = elements.find(el => el.id === conn.source || el.name === conn.source);
                 const targetElem = elements.find(el => el.id === conn.target || el.name === conn.target);
 
-                const sourceEAID = toEAID(sourceElem ? sourceElem.id : conn.source);
-                const targetEAID = toEAID(targetElem ? targetElem.id : conn.target);
+                const sourceEAID = toEAID(sourceElem ? sourceElem.id : conn.source, 'EAID_');
+                const targetEAID = toEAID(targetElem ? targetElem.id : conn.target, 'EAID_');
                 const label = conn.label || '';
                 const type = conn.type || 'association';
 
@@ -510,7 +578,6 @@
                 <properties ea_type="Realisation" direction="Source -&gt; Destination"/>
             </connector>`;
                 } else {
-                    // Asociación, Agregación, Composición o Muchos a Muchos
                     let sourceAgg = 'none';
                     let targetAgg = 'none';
                     let eaType = 'Association';
@@ -525,8 +592,8 @@
                         eaType = 'Association';
                     }
 
-                    const end1Id = `${connEAID}_END1`;
-                    const end2Id = `${connEAID}_END2`;
+                    const end1Id = toEAID(`${connEAID}_END1`, 'EAID_');
+                    const end2Id = toEAID(`${connEAID}_END2`, 'EAID_');
 
                     const end1MultXml = formatMultiplicityXML(conn.sourceMultiplicity, `${connEAID}_S`);
                     const end2MultXml = formatMultiplicityXML(conn.targetMultiplicity, `${connEAID}_T`);
@@ -556,7 +623,7 @@
                 }
             });
 
-            // 3. Ensamblar documento XMI 2.1 completo
+            // 4. Ensamblar documento XMI 2.1 completo con extensiones de Enterprise Architect
             const xmiDocument = `<?xml version="1.0" encoding="UTF-8"?>
 <xmi:XMI xmi:version="2.1" xmlns:uml="http://schema.omg.org/spec/UML/2.1" xmlns:xmi="http://schema.omg.org/spec/XMI/2.1">
     <xmi:Documentation exporter="Enterprise Architect" exporterVersion="6.5"/>
@@ -575,8 +642,8 @@
         </connectors>
         <diagrams>
             <diagram xmi:id="${escapeXML(diagramEAID)}">
-                <model package="${escapeXML(packageEAID)}" localID="1"/>
-                <properties name="${escapeXML(diagramName)}" type="Logical"/>
+                <model package="${escapeXML(packageEAID)}" localID="1" owner="${escapeXML(packageEAID)}"/>
+                <properties name="${escapeXML(diagramName)}" type="Logical" ea_type="Class"/>
                 <project author="${escapeXML(author)}" version="1.0" created="${dateStr}" modified="${dateStr}"/>
                 <elements>
                     ${eaDiagramElementsXml}
@@ -648,7 +715,6 @@
                 }
             }
 
-            // Fallback a etiquetas directas <Class> o <UML:Class>
             if (classNodes.length === 0) {
                 classNodes = queryUniqueTags(doc, ['Class']);
             }
@@ -661,8 +727,7 @@
                 const visibility = cNode.getAttribute('visibility') || 'public';
                 const stereotype = cNode.getAttribute('stereotype') || '';
 
-                // Obtener posición desde diagrama o calcular cuadrícula
-                let geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId));
+                let geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId, 'EAID_'));
                 let x = geom ? geom.x : (100 + (gridIndex % 3) * 280);
                 let y = geom ? geom.y : (100 + Math.floor(gridIndex / 3) * 220);
 
@@ -679,7 +744,6 @@
                     const aVis = aNode.getAttribute('visibility') || 'private';
                     let aType = aNode.getAttribute('type');
 
-                    // Buscar tipo hijo <type name="...">
                     if (!aType) {
                         const typeNodes = aNode.getElementsByTagName('type') || [];
                         if (typeNodes.length > 0) {
@@ -796,7 +860,7 @@
 
                 elements.push(umlClass);
                 idToElementMap.set(rawId, umlClass);
-                idToElementMap.set(toEAID(rawId), umlClass);
+                idToElementMap.set(toEAID(rawId, 'EAID_'), umlClass);
                 idToElementMap.set(name, umlClass);
             });
 
@@ -807,7 +871,7 @@
                 if (type === 'uml:Enumeration' || type === 'Enumeration') {
                     const rawId = getNodeId(p) || `enum_${Date.now()}_${gridIndex}`;
                     const name = p.getAttribute('name') || `Enum${gridIndex + 1}`;
-                    const geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId));
+                    const geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId, 'EAID_'));
                     const x = geom ? geom.x : (100 + (gridIndex % 3) * 280);
                     const y = geom ? geom.y : (100 + Math.floor(gridIndex / 3) * 220);
                     gridIndex++;
@@ -835,9 +899,8 @@
                 const p = allPackaged[i];
                 const type = p.getAttribute('xmi:type') || p.getAttribute('type');
                 if (type === 'uml:Package' && p.getAttribute('name') !== 'EA_Model' && p.getAttribute('name') !== 'Model') {
-                    // Si tiene clases hijas directamente en él, o si es un paquete de diagramación
                     const rawId = getNodeId(p) || `pkg_${Date.now()}_${gridIndex}`;
-                    const geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId));
+                    const geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId, 'EAPK_'));
                     if (geom) {
                         elements.push({
                             id: rawId,
@@ -849,7 +912,7 @@
                     }
                 } else if (type === 'uml:Comment' || type === 'Comment') {
                     const rawId = getNodeId(p) || `note_${Date.now()}_${gridIndex}`;
-                    const geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId));
+                    const geom = geometryMap.get(rawId) || geometryMap.get(toEAID(rawId, 'EAID_'));
                     elements.push({
                         id: rawId,
                         type: 'note',
@@ -923,7 +986,7 @@
                         }
                     }
                 } else if (type === 'uml:Dependency' || type === 'Dependency') {
-                    const connId = p.getAttribute('xmi:id') || `dep_${Date.now()}_${connections.length}`;
+                    const connId = getNodeId(p) || `dep_${Date.now()}_${connections.length}`;
                     const s = p.getAttribute('client');
                     const t = p.getAttribute('supplier');
                     const connKey = `${s}->${t}:dependency`;
@@ -940,7 +1003,7 @@
                         });
                     }
                 } else if (type === 'uml:Realization' || type === 'Realization') {
-                    const connId = p.getAttribute('xmi:id') || `real_${Date.now()}_${connections.length}`;
+                    const connId = getNodeId(p) || `real_${Date.now()}_${connections.length}`;
                     const s = p.getAttribute('client');
                     const t = p.getAttribute('supplier');
                     const connKey = `${s}->${t}:implementation`;
