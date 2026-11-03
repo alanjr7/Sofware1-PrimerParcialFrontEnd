@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/css/agentGuide.css">
     <script src="./js/config.js"></script>
     <script src="./js/authGuard.js"></script>
+    <script src="./js/enterpriseArchitectBridge.js"></script>
 
     <style>
         :root {
@@ -3403,6 +3404,9 @@
                 <button class="btn btn-primary btn-sm w-100 mb-2 fw-semibold" onclick="DiagramManager.exportDiagram()">
                     <i class="fas fa-download me-1"></i> Exportar Diagrama
                 </button>
+                <button class="btn btn-outline-primary btn-sm w-100 mb-2 fw-semibold" onclick="DiagramManager.exportEnterpriseArchitect()" title="Exportar a Sparx Systems Enterprise Architect (XMI 2.1)">
+                    <i class="fas fa-file-export me-1"></i> Exportar Enterprise Architect (XMI)
+                </button>
                 <button class="btn btn-outline-secondary btn-sm w-100 mb-2" onclick="DiagramManager.exportSpringBoot()">
                     <i class="fas fa-code me-1"></i> Exportar Spring Boot
                 </button>
@@ -5087,6 +5091,33 @@
                 URL.revokeObjectURL(url);
             }
 
+            static exportEnterpriseArchitect() {
+                try {
+                    const data = {
+                        elements: Array.from(this.elements.values()).map(el => ({
+                            ...el,
+                            selected: false
+                        })),
+                        connections: ConnectionManager.connections
+                    };
+                    
+                    if (!data.elements || data.elements.length === 0) {
+                        this.showValidationMessage('⚠️ El lienzo está vacío. Agrega clases antes de exportar.', 'warning');
+                        return;
+                    }
+
+                    if (typeof EnterpriseArchitectBridge === 'undefined') {
+                        throw new Error('El módulo EnterpriseArchitectBridge no está cargado.');
+                    }
+
+                    const xmiContent = EnterpriseArchitectBridge.exportDiagramFile(data, 'diagrama_enterprise_architect.xmi');
+                    this.showValidationMessage('✅ Diagrama exportado a Enterprise Architect (XMI 2.1) con éxito', 'success');
+                    console.log('📄 Diagrama exportado a Enterprise Architect (XMI 2.1):', xmiContent.length, 'bytes');
+                } catch (error) {
+                    console.error('❌ Error exportando a Enterprise Architect:', error);
+                    alert('Error al exportar a Enterprise Architect: ' + error.message);
+                }
+            }
             static async exportSpringBoot() {
                 try {
                     // ✅ NUEVO ENFOQUE: Usar XML de la sala en lugar de datos del frontend
@@ -5954,16 +5985,54 @@
             static importDiagram() {
                 const input = document.createElement('input');
                 input.type = 'file';
-                input.accept = '.json';
+                input.accept = '.json, .xmi, .xml';
                 input.onchange = (e) => {
                     const file = e.target.files[0];
                     if (file) {
                         const reader = new FileReader();
                         reader.onload = (e) => {
                             try {
-                                const data = JSON.parse(e.target.result);
-                                this.loadDiagram(data);
+                                const fileContent = e.target.result;
+                                const fileName = (file.name || '').toLowerCase();
+                                const trimmed = (fileContent || '').trim();
+                                const isXML = trimmed.startsWith('<') || fileName.endsWith('.xmi') || fileName.endsWith('.xml');
+
+                                if (isXML) {
+                                    console.log('🔄 Importando diagrama XMI/XML de Enterprise Architect...');
+                                    if (typeof EnterpriseArchitectBridge === 'undefined') {
+                                        throw new Error('El módulo EnterpriseArchitectBridge no está cargado.');
+                                    }
+                                    const parsedData = EnterpriseArchitectBridge.xmiToDiagram(fileContent);
+                                    if (!parsedData.elements || parsedData.elements.length === 0) {
+                                        throw new Error('No se encontraron clases o elementos UML en el archivo.');
+                                    }
+
+                                    this.processDiagramData(parsedData);
+                                    PersistenceManager.markAsChanged();
+                                    PersistenceManager.saveDiagram();
+
+                                    if (window.pizarraColaborativa && window.pizarraColaborativa.socket) {
+                                        window.pizarraColaborativa.socket.emit('actualizarDiagrama', {
+                                            action: 'fullState',
+                                            diagrama: {
+                                                elements: Array.from(this.elements.values()),
+                                                connections: ConnectionManager.connections
+                                            }
+                                        });
+                                    }
+
+                                    const countElem = parsedData.elements.length;
+                                    const countConn = (parsedData.connections || []).length;
+                                    this.showValidationMessage(`✅ Importado de Enterprise Architect: ${countElem} clases, ${countConn} relaciones`, 'success');
+                                } else {
+                                    const data = JSON.parse(fileContent);
+                                    this.loadDiagram(data);
+                                    PersistenceManager.markAsChanged();
+                                    PersistenceManager.saveDiagram();
+                                    this.showValidationMessage('✅ Diagrama JSON importado con éxito', 'success');
+                                }
                             } catch (error) {
+                                console.error('❌ Error al cargar el archivo:', error);
                                 alert('Error al cargar el archivo: ' + error.message);
                             }
                         };
@@ -5996,6 +6065,13 @@
                 try {
                     if (typeof xmlData === 'object' && xmlData !== null) {
                         return this.processDiagramData(xmlData);
+                    }
+                    if (typeof xmlData === 'string' && xmlData.trim().startsWith('<')) {
+                        console.log('📄 Detectado XML/XMI real de Enterprise Architect en DiagramManager.loadDiagramFromXML...');
+                        if (typeof EnterpriseArchitectBridge !== 'undefined') {
+                            const parsedFromXMI = EnterpriseArchitectBridge.xmiToDiagram(xmlData);
+                            return this.processDiagramData(parsedFromXMI);
+                        }
                     }
                     if (!xmlData || (typeof xmlData === 'string' && xmlData.trim() === '')) {
                         console.warn('⚠️ XML/JSON vacío, creando diagrama nuevo');
@@ -11717,6 +11793,13 @@
                             xmlData.substring(0, 100) + (xmlData.length > 100 ? '...' : ''));
                     }
                     
+                    if (typeof xmlData === 'string' && xmlData.trim().startsWith('<')) {
+                        console.log('📄 Detectado XML/XMI real de Enterprise Architect en SalaManager.loadDiagramFromXML...');
+                        if (typeof EnterpriseArchitectBridge !== 'undefined') {
+                            const parsedFromXMI = EnterpriseArchitectBridge.xmiToDiagram(xmlData);
+                            return this.processDiagramData(parsedFromXMI);
+                        }
+                    }
                     // Intentar parsear el XML como JSON con manejo de errores robusto
                     let diagramData;
                     try {
