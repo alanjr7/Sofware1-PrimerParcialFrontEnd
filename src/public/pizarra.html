@@ -6143,23 +6143,27 @@
                             elementsData : 
                             Object.values(elementsData);
                         if (elementData && elementData.length > 0) {
-                            elementData.forEach(element => {
+                        elementData.forEach((element, idx) => {
                                 try {
                                     if (!element) {
                                         console.warn('⚠️ Elemento nulo encontrado');
                                         return;
                                     }
                                     if (!element.type) {
-                                        console.warn('⚠️ Elemento sin tipo encontrado:', element);
-                                        return;
+                                        element.type = 'class';
+
                                     }                                    
+                                    const col = idx % 3;
+                                    const row = Math.floor(idx / 3);
+                                    const posX = (element.x !== undefined && element.x !== null) ? element.x : (80 + col * 280);
+                                    const posY = (element.y !== undefined && element.y !== null) ? element.y : (80 + row * 230);
                                     let newElement;
                                     switch (element.type) {
                                         case 'class':
                                             newElement = new UMLClass(
                                                 element.id || `element_${this.idCounter++}`, 
-                                                element.x || 100, 
-                                                element.y || 100, 
+                                                posX,
+                                                posY,
                                                 element.name || 'NuevaClase'
                                             );
                                             newElement.stereotype = element.stereotype || '';
@@ -6170,8 +6174,8 @@
                                         case 'enum':
                                             newElement = new UMLEnum(
                                                 element.id || `element_${this.idCounter++}`, 
-                                                element.x || 100, 
-                                                element.y || 100, 
+                                                posX,
+                                                posY,
                                                 element.name || 'NuevaEnumeracion'
                                             );
                                             newElement.values = Array.isArray(element.values) ? element.values : [];
@@ -6179,8 +6183,8 @@
                                         case 'package':
                                             newElement = new UMLPackage(
                                                 element.id || `element_${this.idCounter++}`, 
-                                                element.x || 100, 
-                                                element.y || 100, 
+                                                posX,
+                                                posY,
                                                 element.name || 'NuevoPaquete'
                                             );
                                             newElement.description = element.description || '';
@@ -6188,8 +6192,8 @@
                                         case 'note':
                                             newElement = new UMLNote(
                                                 element.id || `element_${this.idCounter++}`, 
-                                                element.x || 100, 
-                                                element.y || 100, 
+                                                posX,
+                                                posY,
                                                 element.text || 'Nueva nota'
                                             );
                                             break;
@@ -11917,7 +11921,7 @@
                             console.log('🧩 Elementos convertidos para cargar:', elementData);
                             
                             if (elementData && elementData.length > 0) {
-                                elementData.forEach(element => {
+                        elementData.forEach((element, idx) => {
                                     try {
                                         if (!element) {
                                             console.warn('⚠️ Elemento nulo encontrado');
@@ -11925,8 +11929,8 @@
                                         }
                                         
                                         if (!element.type) {
-                                            console.warn('⚠️ Elemento sin tipo encontrado:', element);
-                                            return;
+                                        element.type = 'class';
+
                                         }
                                         
                                         console.log(`🔍 Procesando elemento ${element.id} de tipo ${element.type}:`, element);
